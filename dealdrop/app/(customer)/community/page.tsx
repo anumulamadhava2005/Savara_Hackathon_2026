@@ -1,74 +1,117 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Heart, MessageCircle, Share2, Activity, MapPin } from 'lucide-react';
 import { MOCK_USERS } from '@/lib/mock-data';
+import { createClient } from '@/lib/supabase/client';
 
 export default function CommunityPage() {
   const currentUser = MOCK_USERS[0]; // using Priya Sharma
+  const supabase = createClient();
 
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      user: "Sarah Jenkins",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop",
-      time: "2 hours ago",
-      location: "The Butcher's Table",
-      content: "Just claimed the 50% Off Ribs deal! You guys were not kidding about the portion sizes. Absolutely insane value through Urban Pulse.",
-      image: "https://images.unsplash.com/photo-1544025162-836901980a56?q=80&w=800&auto=format&fit=crop",
-      likes: 42,
-      comments: 7,
-      isLiked: true
-    },
-    {
-      id: 2,
-      user: "Marcus V.",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=100&auto=format&fit=crop",
-      time: "5 hours ago",
-      location: "SneakerHead NYC",
-      content: "Secured my spot in the Squad Flash Mob for the Yeezys! We only need 3 more people to trigger the 30% discount. Who's in?",
-      image: null,
-      likes: 128,
-      comments: 34,
-      isLiked: false
-    }
-  ]);
-
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newPostContent, setNewPostContent] = useState('');
 
-  const handlePostSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    async function fetchPosts() {
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error("Fetch error:", error);
+        alert(`Database Error: ${error.message}\n\nDid you run the SQL script to create the 'community_posts' table in Supabase?`);
+      }
+
+      if (data && data.length > 0) {
+        setPosts(data.map(p => ({
+          ...p,
+          user: p.user_name,
+          time: p.time_display,
+          isLiked: false
+        })));
+      } else {
+        setPosts([]);
+      }
+      setLoading(false);
+    }
+    fetchPosts();
+  }, [supabase]);
+
+  const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPostContent.trim()) return;
 
-    const newPost = {
-      id: Date.now(),
-      user: currentUser.full_name,
+    const newPostData = {
+      user_name: currentUser.full_name,
       avatar: currentUser.avatar_url,
-      time: "Just now",
+      time_display: "Just now",
       location: "Nearby",
       content: newPostContent,
       image: null,
       likes: 0,
-      comments: 0,
-      isLiked: false
+      comments: 0
     };
 
-    setPosts([newPost, ...posts]);
+    const tempId = Date.now().toString();
+    const optimisticPost = {
+      id: tempId,
+      ...newPostData,
+      user: newPostData.user_name,
+      time: newPostData.time_display,
+      isLiked: false
+    };
+    
+    setPosts([optimisticPost, ...posts]);
     setNewPostContent('');
+
+    const { data, error } = await supabase
+      .from('community_posts')
+      .insert([newPostData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Insert error:", error);
+      alert(`Failed to save post: ${error.message}\n\nPlease make sure the table exists and RLS allows inserts.`);
+      // Revert the optimistic UI update
+      setPosts(current => current.filter(p => p.id !== tempId));
+      return;
+    }
+
+    if (data) {
+      setPosts(current => current.map(p => p.id === tempId ? {
+        ...data,
+        user: data.user_name,
+        time: data.time_display,
+        isLiked: false
+      } : p));
+    }
   };
 
-  const handleToggleLike = (postId: number) => {
+  const handleToggleLike = async (postId: string | number) => {
+    const postToUpdate = posts.find(p => p.id === postId);
+    if (!postToUpdate) return;
+
+    const newIsLiked = !postToUpdate.isLiked;
+    const newLikes = newIsLiked ? postToUpdate.likes + 1 : postToUpdate.likes - 1;
+
     setPosts(posts.map(post => {
       if (post.id === postId) {
-        return {
-          ...post,
-          isLiked: !post.isLiked,
-          likes: post.isLiked ? post.likes - 1 : post.likes + 1
-        };
+        return { ...post, isLiked: newIsLiked, likes: newLikes };
       }
       return post;
     }));
+
+    if (typeof postId === 'string' && postId.includes('-')) {
+        await supabase
+          .from('community_posts')
+          .update({ likes: newLikes })
+          .eq('id', postId);
+    }
   };
 
   return (
@@ -158,9 +201,16 @@ export default function CommunityPage() {
         ))}
 
         {/* Loading Spinner Area */}
-        <div className="w-full flex justify-center pb-8 pt-4">
-           <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
+        {loading && (
+          <div className="w-full flex justify-center pb-8 pt-4">
+             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+        {!loading && posts.length === 0 && (
+          <div className="w-full text-center text-on-surface-variant pt-10 font-medium">
+             No pulses found yet. Be the first to share!
+          </div>
+        )}
       </div>
     </div>
   );
