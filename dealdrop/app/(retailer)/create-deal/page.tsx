@@ -1,7 +1,7 @@
 'use client';
 
-import { AlertCircle, Clock, ImageIcon, Rocket, Lightbulb, Share2, Eye, UploadCloud, Info } from '@/components/ui/Icons';
-import { useState } from 'react';
+import { Info, Clock, AlertTriangle, Image as ImageIcon, Rocket, Lightbulb, Share2, Eye, UploadCloud, X } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function CreateDealPage() {
@@ -14,6 +14,45 @@ export default function CreateDealPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Image upload state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Please select a valid image file (JPG, PNG, WebP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg('Image must be under 5MB.');
+      return;
+    }
+    setErrorMsg('');
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageSelect(file);
+  };
+
+  const uploadImage = async (file: File): Promise<string> => {
+    setIsUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const json = await res.json();
+
+    setIsUploading(false);
+    if (!res.ok) throw new Error(json.error ?? 'Image upload failed');
+    return json.url as string;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -24,6 +63,12 @@ export default function CreateDealPage() {
     const current = orig - (orig * (dist / 100));
 
     try {
+      // Upload image first if one was selected
+      let imageUrl = 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?q=80&w=400&auto=format&fit=crop';
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
       const res = await fetch('/api/deals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -36,9 +81,9 @@ export default function CreateDealPage() {
           discount_percent: dist,
           quantity_total: parseInt(quantity) || 0,
           expiry_hours: expiryHours,
-          lat: 13.0827,
-          lng: 80.2707,
-          image_url: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?q=80&w=400&auto=format&fit=crop',
+          lat: 41.8962,
+          lng: -87.6242,
+          image_url: imageUrl,
           is_flash_mob: false
         })
       });
@@ -224,20 +269,68 @@ export default function CreateDealPage() {
           <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <ImageIcon size={16} className="text-gray-400" />
             Deal Visual
+            {imageFile && <span className="text-xs text-emerald-600 font-bold ml-1">✓ Image selected</span>}
           </label>
-          <div className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors group">
-             <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 mb-4 group-hover:scale-110 transition-transform">
-               <UploadCloud size={24} />
-             </div>
-             <p className="font-bold text-gray-700 mb-1">Drag and drop or click to upload</p>
-             <p className="text-[10px] text-gray-400 font-black tracking-widest uppercase">High-Quality JPG/PNG (Max 5MB)</p>
-          </div>
+
+          {/* Hidden real file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImageSelect(file);
+            }}
+          />
+
+          {imagePreview ? (
+            /* Preview state */
+            <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-200 bg-gray-50 group">
+              <img src={imagePreview} alt="Deal preview" className="w-full h-48 object-cover" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-white text-gray-900 px-4 py-2 rounded-xl text-sm font-bold shadow-lg hover:bg-gray-50 transition-colors"
+                >
+                  Change Image
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                  className="bg-red-500 text-white p-2 rounded-xl shadow-lg hover:bg-red-600 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="absolute bottom-2 right-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
+                Ready
+              </div>
+            </div>
+          ) : (
+            /* Empty upload zone */
+            <div
+              className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-primary/40 transition-all group"
+              onClick={() => fileInputRef.current?.click()}
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-primary', 'bg-primary/5'); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove('border-primary', 'bg-primary/5'); }}
+            >
+              <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 mb-4 group-hover:scale-110 group-hover:text-primary transition-all">
+                <UploadCloud size={24} />
+              </div>
+              <p className="font-bold text-gray-700 mb-1">Drag and drop or click to upload</p>
+              <p className="text-[10px] text-gray-400 font-black tracking-widest uppercase">JPG, PNG or WebP · Max 5MB</p>
+            </div>
+          )}
         </div>
 
         {/* Action Area */}
         <div className="text-center">
-          <button disabled={isLoading} type="submit" className={`w-full bg-gradient-to-r from-[#a33700] to-orange-500 text-white font-black text-lg py-5 rounded-2xl shadow-xl shadow-orange-900/20 hover:scale-[1.01] transition-all flex items-center justify-center gap-3 ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
-             <Rocket size={24} fill="currentColor" className="opacity-80"/> {isLoading ? 'Publishing...' : 'Publish One-Click Flash Deal'}
+          <button disabled={isLoading || isUploading} type="submit" className={`w-full bg-gradient-to-r from-[#a33700] to-orange-500 text-white font-black text-lg py-5 rounded-2xl shadow-xl shadow-orange-900/20 hover:scale-[1.01] transition-all flex items-center justify-center gap-3 ${isLoading || isUploading ? 'opacity-70 pointer-events-none' : ''}`}>
+             <Rocket size={24} fill="currentColor" className="opacity-80"/> {isUploading ? 'Uploading image…' : isLoading ? 'Publishing...' : 'Publish One-Click Flash Deal'}
           </button>
           <p className="text-xs text-gray-500 font-medium mt-4">By publishing, you agree to fulfill all claimed vouchers within 24 hours.</p>
         </div>
