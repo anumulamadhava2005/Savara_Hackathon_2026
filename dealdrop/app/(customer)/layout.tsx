@@ -38,9 +38,11 @@ export default function CustomerLayout({
   const hideMobileNavPaths = ['/interests', '/location', '/redeem'];
   const isNavHiddenOnMobile = hideMobileNavPaths.some(p => pathname?.startsWith(p));
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    router.push('/login');
+  const handleLogout = async () => {
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   if (!isHydrated) {
@@ -111,10 +113,17 @@ export default function CustomerLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 relative w-full pb-20 md:pb-0 overflow-x-hidden">
-        <div className="md:max-w-6xl md:mx-auto md:p-8 w-full md:bg-white md:min-h-screen md:shadow-sm">
-          {children}
-        </div>
+      <main className="flex-1 relative w-full pb-20 md:pb-0 overflow-x-hidden flex flex-col">
+        {pathname === '/map' ? (
+          // Map page: full-bleed, no padding, no max-width
+          <div className="flex-1 flex flex-col">
+            {children}
+          </div>
+        ) : (
+          <div className="md:max-w-6xl md:mx-auto md:p-8 w-full md:bg-white md:min-h-screen md:shadow-sm">
+            {children}
+          </div>
+        )}
       </main>
 
       {/* Mobile Bottom Navigation */}
