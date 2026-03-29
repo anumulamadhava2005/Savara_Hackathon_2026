@@ -33,6 +33,15 @@ export function DealMap({ deals, center, zoom = 14 }: DealMapProps) {
   useEffect(() => {
     // Import leaflet CSS
     import('leaflet/dist/leaflet.css');
+    
+    return () => {
+      // Cleanup leaflet map instance on unmount to support React StrictMode
+      // @ts-expect-error - _leaflet_id is internal
+      if (mapRef.current && mapRef.current._leaflet_id) {
+        // @ts-expect-error
+        mapRef.current._leaflet_id = null;
+      }
+    };
   }, []);
 
   return (

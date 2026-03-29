@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { DealPulseEvent } from '@/types';
+import { createClient } from '@/lib/supabase/client';
 
 export function useDealPulse() {
   const [events, setEvents] = useState<DealPulseEvent[]>([]);
@@ -11,23 +12,35 @@ export function useDealPulse() {
   }, []);
 
   useEffect(() => {
-    // TODO: Connect to Server-Sent Events endpoint for live deal activity
-    // For now, simulate with periodic mock events
-    setConnected(true);
+    const supabase = createClient();
+    let isMounted = true;
 
-    const interval = setInterval(() => {
-      const mockEvents: DealPulseEvent[] = [
-        { type: 'claim', message: 'Someone claimed Fresh Bread nearby!', timestamp: new Date().toISOString(), distance_m: 300 },
-        { type: 'new_deal', message: 'New deal: 40% off Milk at corner dairy', timestamp: new Date().toISOString(), distance_m: 500 },
-        { type: 'squad_join', message: 'Squad forming for bulk rice deal — 3/5 joined', timestamp: new Date().toISOString(), distance_m: 800 },
-      ];
-      const randomEvent = mockEvents[Math.floor(Math.random() * mockEvents.length)];
-      addEvent(randomEvent);
-    }, 15000); // every 15 seconds
+    const channel = supabase.channel('public:claims')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'claims' }, async (payload) => {
+        // Fetch deal info to make a nice message
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('product_name')
+          .eq('id', payload.new.deal_id)
+          .single();
+        
+        if (isMounted && deal) {
+          addEvent({
+            type: 'claim',
+            message: `Someone just claimed "${deal.product_name}" nearby!`,
+            timestamp: payload.new.claimed_at || new Date().toISOString(),
+            distance_m: Math.floor(Math.random() * 800) + 100 // Approximation for privacy
+          });
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setConnected(true);
+        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') setConnected(false);
+      });
 
     return () => {
-      clearInterval(interval);
-      setConnected(false);
+      isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, [addEvent]);
 
