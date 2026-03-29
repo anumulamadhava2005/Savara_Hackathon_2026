@@ -1,30 +1,99 @@
-"use client";
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, ChevronDown, Heart, Zap, Navigation, Clock, TrendingUp, Frown, MapPin, Sparkles, ShieldCheck } from '@/components/ui/Icons';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { 
+  Search, ChevronDown, Heart, Zap, Navigation, Clock, 
+  TrendingUp, Frown, MapPin, Sparkles, ShieldCheck,
+  RefreshCw, LogOut // Add these to Icons if not there, for now using what we have
+} from '@/components/ui/Icons';
 import { useAppStore } from '@/store/appStore';
 
-const CATEGORIES = ['All', 'Food', 'Wellness', 'Fashion', 'Grocery'];
+/* ── types ──────────────────────────────────────────────── */
+interface Deal {
+  id: string;
+  product_name: string;
+  description: string;
+  category: string;
+  original_price: number;
+  current_price: number;
+  discount_percent: number;
+  quantity_remaining: number;
+  expiry_time: string;
+  image_url: string;
+  is_flash_mob: boolean;
+  distance_km: number;
+  retailers: { shop_name: string; address: string; avatar_url?: string; rating?: number };
+}
 
+const CATEGORIES = ['All', 'Food', 'Wellness', 'Fashion', 'Grocery', 'General'];
+const DEFAULT_LAT = 12.9716;
+const DEFAULT_LNG = 77.5946;
+
+/* ── main page ───────────────────────────────────────────── */
 export default function DiscoverPage() {
-  const { deals, savedDealIds, toggleSave, currentUser } = useAppStore();
+  const router = useRouter();
+  const { deals, currentUser, savedDealIds, toggleSave } = useAppStore();
+  
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [userLat, setUserLat] = useState(DEFAULT_LAT);
+  const [userLng, setUserLng] = useState(DEFAULT_LNG);
+  const [locationLabel, setLocationLabel] = useState('Bangalore, India');
 
-  const filtered = deals.filter(d => {
-    const matchCat = activeCategory === 'All' || d.category.toLowerCase() === activeCategory.toLowerCase();
-    const matchSearch = !search || d.product_name.toLowerCase().includes(search.toLowerCase()) || d.retailers.shop_name.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          setUserLat(lat); setUserLng(lng);
+          // reverse geocode via Google Maps Geocoding API if key exists
+          if (process.env.NEXT_PUBLIC_GMAPS_KEY) {
+            try {
+              const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GMAPS_KEY}`);
+              const g = await r.json();
+              const comp = g.results?.[0]?.address_components;
+              const locality = comp?.find((c: any) => c.types.includes('locality'))?.long_name;
+              if (locality) setLocationLabel(locality);
+            } catch {}
+          }
+        }
+      );
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  const filtered = (deals as any[]).filter(d => {
+    // Category filter
+    if (activeCategory !== 'All' && d.category.toLowerCase() !== activeCategory.toLowerCase()) return false;
+    
+    // Search filter
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      d.product_name.toLowerCase().includes(q) ||
+      (d.retailers?.shop_name ?? '').toLowerCase().includes(q)
+    );
   });
 
   return (
-    <div className="flex flex-col min-h-full bg-surface relative pb-8 md:pb-0 pt-0">
+    <div className="flex flex-col min-h-full bg-surface relative pb-8 md:pb-0 pt-0 font-sans">
       {/* Mobile header */}
       <div className="md:hidden flex justify-between items-center p-6 pb-3">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img src={currentUser?.avatar_url} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md bg-slate-200" />
+            <img 
+              src={currentUser?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop'} 
+              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md bg-slate-200" 
+            />
             <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full primary-gradient border-2 border-white flex items-center justify-center">
               <Sparkles size={8} fill="white" />
             </div>
@@ -34,9 +103,14 @@ export default function DiscoverPage() {
             <p className="font-headline font-black text-lg text-on-surface leading-tight">{currentUser?.full_name?.split(' ')[0] || 'Explorer'}</p>
           </div>
         </div>
-        <div className="h-11 px-4 bg-[#ffefdb] text-[#a33700] rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm">
-          <Zap size={16} fill="currentColor" />
-          {(currentUser?.reward_points || 0) > 999 ? `${Math.floor((currentUser?.reward_points || 0) / 1000)}k` : currentUser?.reward_points}
+        <div className="flex items-center gap-2">
+           <div className="h-11 px-4 bg-[#ffefdb] text-[#a33700] rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm">
+            <Zap size={16} fill="currentColor" />
+            {(currentUser?.reward_points || 0) > 999 ? `${Math.floor((currentUser?.reward_points || 0) / 1000)}k` : currentUser?.reward_points}
+          </div>
+          <button onClick={handleLogout} className="w-11 h-11 bg-red-50 text-[#b31b25] rounded-2xl flex items-center justify-center shadow-sm">
+            <LogOut size={18} />
+          </button>
         </div>
       </div>
 
@@ -44,19 +118,27 @@ export default function DiscoverPage() {
       <div className="hidden md:flex items-center justify-between mb-10">
         <div>
           <h1 className="text-4xl font-headline font-black text-on-surface tracking-tight">Discover</h1>
-          <p className="text-on-surface-variant font-bold mt-1 text-lg">Real-time pulses in your neighborhood</p>
+          <p className="text-on-surface-variant font-bold mt-1 text-lg">Real-time pulses in {locationLabel}</p>
         </div>
-        <div className="relative w-80">
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search size={20} className="text-outline-variant" />
+        <div className="flex items-center gap-4">
+          <div className="relative w-80">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search size={20} className="text-on-surface-variant/40" />
+            </div>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search local pulses..."
+              className="w-full h-14 bg-white border border-surface-container-high text-on-surface placeholder:text-on-surface-variant/40 rounded-3xl pl-13 pr-6 focus:outline-none focus:ring-4 focus:ring-primary/10 font-bold text-[15px] shadow-sm transition-all"
+            />
           </div>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search local pulses..."
-            className="w-full h-14 bg-white border border-surface-container-high text-on-surface placeholder:text-outline-variant rounded-3xl pl-13 pr-6 focus:outline-none focus:ring-4 focus:ring-primary/10 font-bold text-[15px] shadow-sm transition-all"
-          />
+          <button 
+            onClick={handleLogout}
+            className="h-14 px-6 bg-red-50 text-[#b31b25] font-black rounded-3xl flex items-center gap-2 hover:bg-red-100 transition-all text-sm"
+          >
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
       </div>
 
@@ -97,23 +179,29 @@ export default function DiscoverPage() {
       {/* Deals Grid */}
       <div className="px-6 md:px-0 space-y-8">
         <div className="flex justify-between items-end">
-          <h2 className="text-2xl font-headline font-black text-on-surface tracking-tight">
-            {activeCategory === 'All' ? 'Live Near You' : `${activeCategory} Pulses`}
-          </h2>
-          <Link href="/deals" className="text-[13px] font-black text-primary hover:underline flex items-center gap-1.5 uppercase tracking-widest">
-            My Deals <ChevronDown size={14} className="-rotate-90" />
+          <div className="space-y-1">
+             <div className="flex items-center gap-2 mb-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+              <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-[0.2em]">Active Pulses</p>
+            </div>
+            <h2 className="text-2xl font-headline font-black text-on-surface tracking-tight">
+              {activeCategory === 'All' ? 'Live Near You' : `${activeCategory} Pulses`}
+            </h2>
+          </div>
+          <Link href="/map" className="text-[13px] font-black text-primary hover:underline flex items-center gap-1.5 uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-xl">
+             Map View <Navigation size={14} className="rotate-45" />
           </Link>
         </div>
 
         {filtered.length === 0 ? (
           <div className="col-span-full py-20 text-center bg-white rounded-[40px] border border-dashed border-surface-container-high shadow-inner">
-            <Frown className="mx-auto text-outline-variant/30 mb-6" size={64} />
+            <Frown className="mx-auto text-on-surface-variant/30 mb-6" size={64} />
             <h3 className="text-xl font-headline font-black text-on-surface mb-2">No pulses detected!</h3>
             <p className="text-on-surface-variant font-bold max-w-sm mx-auto">Try a different category or search term to bypass the void.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((deal, index) => {
+            {filtered.map((deal: any) => {
               const isSaved = savedDealIds.includes(deal.id);
               const isUrgent = deal.quantity_remaining <= 4;
               return (

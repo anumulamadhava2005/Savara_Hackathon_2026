@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   PlusCircle,
@@ -16,12 +16,11 @@ import { createClient } from '@/lib/supabase/client';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   const navItems = [
