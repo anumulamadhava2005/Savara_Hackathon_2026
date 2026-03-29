@@ -97,20 +97,7 @@ export default function RegisterPage() {
             Create your digital passport and start claiming exclusive neighborhood pulses.
           </p>
 
-          <form onSubmit={handleEmailSignUp} className="space-y-4 text-left">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-indigo-400 ml-1">Full Name</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-white placeholder:text-white/30"
-                placeholder="John Wick"
-              />
-            </div>
-
-            <form onSubmit={handleEmailSignUp} className="space-y-4">
+          <form onSubmit={handleEmailSignUp} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest ml-1">Full Identity Name</label>
                 <input
@@ -181,35 +168,33 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <div className="flex items-center gap-4 py-2">
-              <div className="h-[1px] flex-grow bg-surface-container-high"></div>
-              <span className="text-on-surface-variant text-[10px] font-black uppercase tracking-widest">or quick identity</span>
-              <div className="h-[1px] flex-grow bg-surface-container-high"></div>
-            </div>
+          <div className="flex items-center gap-4 py-2">
+            <div className="h-[1px] flex-grow bg-surface-container-high"></div>
+            <span className="text-on-surface-variant text-[10px] font-black uppercase tracking-widest">or quick identity</span>
+            <div className="h-[1px] flex-grow bg-surface-container-high"></div>
+          </div>
 
-            <button
-              onClick={handleGoogleSignUp}
-              className="w-full bg-surface-container-lowest text-on-surface border border-surface-container-high py-3 rounded-[20px] font-bold text-sm flex items-center justify-center gap-3 hover:bg-surface-container-low transition-all active:scale-[0.98] ambient-shadow"
-            >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
-            </button >
+          <button
+            onClick={handleGoogleSignUp}
+            className="w-full bg-surface-container-lowest text-on-surface border border-surface-container-high py-3 rounded-[20px] font-bold text-sm flex items-center justify-center gap-3 hover:bg-surface-container-low transition-all active:scale-[0.98] ambient-shadow"
+          >
+            {isLoading ? 'Creating Account...' : 'Create Account'}
+          </button>
 
-            <p className="text-center text-sm font-bold text-on-surface-variant">
-              Already have a passport?
-              <Link href="/login" className="text-primary font-black ml-1.5 hover:underline decoration-2">
-                Sign In Instead →
-              </Link>
-            </p>
-          </section >
-
+          <p className="text-center text-sm font-bold text-on-surface-variant">
+            Already have a passport?
+            <Link href="/login" className="text-primary font-black ml-1.5 hover:underline decoration-2">
+              Sign In Instead →
+            </Link>
+          </p>
           <footer className="pt-8 text-center">
             <p className="text-[9px] text-on-surface-variant font-black uppercase tracking-[0.2em] leading-relaxed opacity-50">
               By registering, you agree to the DealDrop<br />
               Neighborhood Guidelines &amp; Privacy Protocol.
             </p>
           </footer>
-        </div >
-      </div >
-    </div >
+        </div>
+      </div>
+    </div>
   );
 }
