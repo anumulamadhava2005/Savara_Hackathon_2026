@@ -1,4 +1,4 @@
-# DealDrop ⚡: Hyperlocal Flash Sale Platform
+# DealDrop ⚡: Hyperlocal Flash Sale Platform (Team Mufasa)
 (https://savara-hackathon-2026-4jhw.vercel.app/)
 
 Connecting local retailers with nearby customers through real-time, location-based flash deals.
