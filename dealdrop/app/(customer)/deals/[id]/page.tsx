@@ -1,169 +1,232 @@
-"use client";
+'use client';
 
-import React, { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Share2, Heart, Clock, Navigation, Calendar, MapPin, Tag } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { ArrowLeft, Share2, Bookmark, Timer, Flame, MapPin, Star, Navigation, Minus, Plus, ArrowRight, ShieldCheck } from '@/components/ui/Icons';
 import { useAppStore } from '@/store/appStore';
+import { Button } from '@/components/ui/Button';
 
-export default function DealDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function DealDetailsPage() {
+  const { id } = useParams();
   const router = useRouter();
-  const { id } = use(params);
-  const { deals, savedDealIds, claimedDealIds, toggleSave, claimDeal, currentUser } = useAppStore();
-  const [claiming, setClaiming] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
+  const { deals, claimDeal, claimedDealIds, toggleSave, savedDealIds } = useAppStore();
+  
   const deal = deals.find(d => d.id === id);
-  const isSaved = savedDealIds.includes(id);
-  const isClaimed = claimedDealIds.includes(id);
+  const isClaimed = id ? claimedDealIds.includes(id as string) : false;
+  const isSaved = id ? savedDealIds.includes(id as string) : false;
 
   if (!deal) {
     return (
-      <div className="flex flex-col min-h-[100dvh] bg-surface items-center justify-center p-6">
-        <Tag size={48} className="text-outline mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Deal Unavailable</h1>
-        <p className="text-on-surface-variant mb-6">This pulse has expired or doesn't exist.</p>
-        <Link href="/discover"><Button>Back to Discover</Button></Link>
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
+        <h2 className="text-2xl font-black text-on-surface mb-2">Pulse Not Found</h2>
+        <p className="text-on-surface-variant mb-6">This deal may have expired or vanished into the city.</p>
+        <Link href="/discover">
+          <Button>Back to Discover</Button>
+        </Link>
       </div>
     );
   }
 
-  const handleClaim = async () => {
-    if (!currentUser) { router.push('/login'); return; }
-    setClaiming(true);
-    await new Promise(r => setTimeout(r, 1200));
-    claimDeal(id);
-    setClaiming(false);
-    setShowSuccess(true);
-    setTimeout(() => router.push(`/redeem/${id}`), 1200);
-  };
-
-  const timeRemaining = () => {
+  const timeLeft = () => {
     const ms = new Date(deal.expiry_time).getTime() - Date.now();
     if (ms <= 0) return 'Expired';
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
-    return h > 0 ? `${h}h ${m}m` : `${m}m left`;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-surface relative pb-28 md:pb-0">
-      {/* Hero */}
-      <div className="relative h-[360px] md:h-[480px] w-full bg-slate-200 shrink-0">
-        <img src={deal.image_url || ''} alt={deal.product_name} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80"></div>
-        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10">
-          <Link href="/discover" className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-colors">
-            <ArrowLeft size={20} />
-          </Link>
-          <div className="flex gap-2">
-            <button
-              onClick={() => toggleSave(deal.id)}
-              className={`w-10 h-10 backdrop-blur-md rounded-full flex items-center justify-center transition-colors ${isSaved ? 'bg-[#b31b25] text-white' : 'bg-white/20 text-white hover:bg-white/40'}`}
-            >
-              <Heart size={18} fill={isSaved ? 'white' : 'none'} />
+    <div className="flex flex-col min-h-[100dvh] bg-surface relative pb-40">
+      {/* Top Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-surface-container-high/50 md:sticky">
+        <div className="flex items-center px-4 h-16 max-w-2xl mx-auto w-full">
+          <button 
+            onClick={() => router.back()}
+            className="flex items-center justify-center w-10 h-10 text-primary hover:bg-surface-container rounded-full transition-colors"
+          >
+            <ArrowLeft size={24} strokeWidth={2.5} />
+          </button>
+          <h1 className="font-headline font-black text-lg flex-1 ml-2 text-on-surface">Pulse Details</h1>
+          <div className="flex gap-1">
+            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+              <Share2 size={20} />
             </button>
-            <button
-              onClick={() => navigator.share?.({ title: deal.product_name, url: window.location.href }).catch(() => {})}
-              className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-colors"
+            <button 
+              onClick={() => toggleSave(deal.id)}
+              className={`w-10 h-10 flex items-center justify-center transition-colors ${isSaved ? 'text-[#b31b25]' : 'text-on-surface-variant'}`}
             >
-              <Share2 size={18} />
+              <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
             </button>
           </div>
         </div>
-        <div className="absolute bottom-6 left-6 right-6 z-10">
-          <div className="flex gap-2 mb-2">
-            <div className={`text-white text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wider ${deal.quantity_remaining <= 4 ? 'bg-[#b31b25] animate-pulse' : 'bg-white/20 backdrop-blur-md'}`}>
-              {deal.quantity_remaining} REMAINING
+      </header>
+
+      <main className="flex-1 w-full max-w-2xl mx-auto pt-4 md:pt-0">
+        {/* Hero Section */}
+        <section className="relative h-[40vh] md:h-[450px] w-full md:rounded-[40px] overflow-hidden md:mt-4 shadow-xl">
+          <img 
+            alt={deal.product_name} 
+            className="w-full h-full object-cover" 
+            src={deal.image_url} 
+          />
+          
+          {/* Badges Overlapping Hero */}
+          <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+            <div className="bg-primary text-white px-5 py-2.5 rounded-[20px] font-headline font-black text-2xl shadow-2xl btn-gradient">
+              {Math.round(deal.discount_percent)}% OFF
             </div>
             {deal.is_flash_mob && (
-              <div className="bg-primary text-white text-[10px] font-black px-2.5 py-1 rounded-md tracking-wider btn-gradient">SQUAD DROP</div>
+              <div className="bg-white/90 backdrop-blur-md text-primary px-3 py-1.5 rounded-xl font-headline font-black text-xs flex items-center gap-1.5 shadow-lg border border-white">
+                <ShieldCheck size={14} fill="currentColor" className="text-primary/20" />
+                <span>SQUAD DROP</span>
+              </div>
             )}
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-1 tracking-tight drop-shadow-md">{deal.product_name}</h1>
-          <p className="text-white/90 font-bold text-lg drop-shadow-sm">{deal.retailers.shop_name}</p>
+          
+          {/* Image Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          
+          <div className="absolute bottom-6 left-6 right-6 text-white">
+            <p className="font-bold text-white/70 text-sm mb-1 uppercase tracking-widest">{deal.category}</p>
+            <h2 className="text-3xl md:text-4xl font-black leading-tight tracking-tight drop-shadow-md">{deal.product_name}</h2>
+          </div>
+        </section>
+
+        {/* Content Area */}
+        <div className="px-6 -mt-8 relative z-10">
+          {/* Main Info Card */}
+          <div className="bg-white rounded-[32px] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-surface-container-high/50">
+            {/* Pulse Indicators */}
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="bg-surface-container-low p-4 rounded-2xl flex items-center gap-4 border border-surface-container">
+                <div className="w-12 h-12 rounded-full bg-[#ffefdb] flex items-center justify-center text-[#a33700]">
+                  <Timer size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Ends In</p>
+                  <p className="font-headline font-black text-on-surface text-[15px]">{timeLeft()}</p>
+                </div>
+              </div>
+
+              <div className="bg-surface-container-low p-4 rounded-2xl flex items-center gap-4 border border-surface-container">
+                <div className="w-12 h-12 rounded-full bg-[#fae8e8] flex items-center justify-center text-[#b31b25]">
+                  <Flame size={24} fill="currentColor" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Inventory</p>
+                  <p className="font-headline font-black text-[#b31b25] text-[15px]">{deal.quantity_remaining} Left</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-4 mb-8">
+              <h4 className="text-[11px] font-black text-on-surface-variant uppercase tracking-[0.2em]">The Narrative</h4>
+              <p className="text-on-surface-variant leading-relaxed font-medium text-[15px]">
+                {deal.description}
+              </p>
+            </div>
+
+            {/* Store Info Section */}
+            <div className="pt-6 border-t border-surface-container-high/50">
+              <div className="flex items-center gap-4">
+                <img 
+                  alt={deal.retailers.shop_name} 
+                  className="w-16 h-16 rounded-2xl object-cover border border-surface-container" 
+                  src={deal.retailers.avatar_url} 
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <h3 className="font-headline font-black text-on-surface text-lg truncate">{deal.retailers.shop_name}</h3>
+                    <ShieldCheck size={16} className="text-secondary" fill="currentColor" />
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-on-surface-variant font-bold">
+                    <span className="flex items-center gap-1">
+                      <MapPin size={14} />
+                      {deal.distance_km} km away
+                    </span>
+                    <span className="flex items-center gap-1 text-[#fcab23]">
+                      <Star size={14} fill="currentColor" />
+                      {deal.retailers.rating} (Verified)
+                    </span>
+                  </div>
+                </div>
+                <button className="w-12 h-12 bg-secondary text-white rounded-full flex items-center justify-center shadow-lg shadow-secondary/20 hover:scale-105 active:scale-95 transition-all">
+                  <Navigation size={22} fill="white" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Checkout Preference */}
+          <div className="mt-10 mb-6">
+            <h4 className="text-[11px] font-black text-on-surface-variant uppercase tracking-[0.2em] mb-4 text-center">Claim Methodology</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-5 rounded-3xl bg-white border-2 border-primary bg-primary-container/5 shadow-md">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <div className="w-10 h-10 rounded-full bg-[#ffefdb] flex items-center justify-center text-primary mb-1">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <span className="text-[13px] font-black text-primary uppercase tracking-tight">Priority Claim</span>
+                  <span className="text-[10px] text-on-surface-variant font-bold leading-tight">Instant digital key issued immediately.</span>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-white border border-surface-container-high grayscale opacity-60">
+                <div className="flex flex-col items-center gap-2 text-center text-on-surface-variant">
+                  <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center mb-1">
+                    <MapPin size={20} />
+                  </div>
+                  <span className="text-[13px] font-black uppercase tracking-tight">Pay at Pulse</span>
+                  <span className="text-[10px] font-bold leading-tight">Reserved for 30m. Pay on arrival.</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
 
-      <div className="flex-1 bg-surface -mt-5 rounded-t-3xl relative z-20 px-6 pt-8 flex flex-col md:flex-row md:gap-10">
-        {/* Left column */}
-        <div className="flex-1">
-          {/* Pricing */}
-          <div className="flex items-end justify-between mb-8 pb-6 border-b border-surface-container-high">
-            <div>
-              <p className="text-sm text-on-surface-variant font-bold uppercase tracking-widest mb-1">Pulse Price</p>
-              <div className="flex items-baseline gap-3">
-                <span className="text-4xl font-extrabold text-primary">${deal.current_price.toFixed(2)}</span>
-                <span className="text-xl text-outline-variant font-bold line-through">${deal.original_price.toFixed(2)}</span>
-                <span className="text-sm font-black text-[#b31b25] bg-red-50 px-2 py-0.5 rounded-md">{Math.round(deal.discount_percent)}% OFF</span>
+      {/* Checkout Action Bar */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl z-50 rounded-t-[40px] shadow-[0_-15px_40px_rgba(0,0,0,0.08)] border-t border-surface-container-high/50">
+        <div className="px-8 pt-6 pb-12 max-w-2xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <div className="space-y-1">
+              <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Pulse Value</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-headline font-black text-on-surface">${deal.current_price.toFixed(2)}</span>
+                <span className="text-base text-on-surface-variant/40 line-through font-bold">${deal.original_price.toFixed(2)}</span>
               </div>
             </div>
-            <div className="bg-[#b31b25]/10 text-[#b31b25] px-3 py-2 rounded-lg flex items-center gap-1.5 font-bold text-sm border border-[#b31b25]/20">
-              <Clock size={16} /> {timeRemaining()}
+            
+            <div className="flex items-center bg-surface-container-low rounded-full p-1.5 border border-surface-container-high h-12">
+              <button className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface hover:bg-white shadow-sm transition-all disabled:opacity-20">
+                <Minus size={18} strokeWidth={2.5} />
+              </button>
+              <span className="w-10 text-center font-black text-lg">1</span>
+              <button className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface hover:bg-white shadow-sm transition-all">
+                <Plus size={18} strokeWidth={2.5} />
+              </button>
             </div>
           </div>
-
-          {/* Description */}
-          <div className="mb-8">
-            <h3 className="text-lg font-bold text-on-surface mb-3">About this Deal</h3>
-            <p className="text-[15px] font-medium text-on-surface-variant leading-relaxed">{deal.description}</p>
-          </div>
-
-          {/* Location */}
-          <div className="mb-8 p-5 bg-surface-container-low rounded-2xl border border-surface-container-high">
-            <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">Location</h3>
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0">
-                <MapPin size={24} />
-              </div>
-              <div>
-                <p className="font-bold text-on-surface text-[16px]">{deal.retailers.shop_name}</p>
-                <p className="text-[14px] text-on-surface-variant font-medium mt-0.5">{deal.retailers.address}</p>
-                <p className="text-[13px] text-primary font-bold mt-1.5 flex items-center gap-1"><Navigation size={12} /> {deal.distance_km} km away</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-8 p-4 rounded-xl border border-outline-variant/30 text-xs font-medium text-on-surface-variant flex gap-3 items-start">
-            <Calendar size={18} className="text-outline shrink-0" />
-            <span>Valid for redemption today only. Must be claimed in-store within the active timer window. No credit card required.</span>
-          </div>
+          
+          {isClaimed ? (
+            <Link href={`/redeem/${deal.id}`} className="block w-full">
+              <button className="w-full h-16 rounded-full flex items-center justify-center gap-3 bg-green-600 text-white font-headline font-black text-lg shadow-xl shadow-green-200 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                <span>View Reserved Claim</span>
+                <ArrowRight size={22} strokeWidth={2.5} />
+              </button>
+            </Link>
+          ) : (
+            <button 
+              onClick={() => claimDeal(deal.id)}
+              className="primary-gradient w-full h-16 rounded-full flex items-center justify-center gap-3 text-white font-headline font-black text-lg shadow-[0_12px_24px_rgba(163,55,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <span>Initiate Priority Claim</span>
+              <ArrowRight size={22} strokeWidth={2.5} />
+            </button>
+          )}
         </div>
-
-        {/* Right: Sticky Checkout Pane */}
-        <div className="md:w-[340px] shrink-0">
-          <div className="fixed bottom-0 left-0 right-0 p-5 bg-white border-t border-surface-container-high z-40 md:sticky md:bottom-auto md:top-8 md:border md:rounded-3xl md:shadow-xl md:p-6">
-            <div className="hidden md:block mb-6">
-              <h3 className="text-xl font-bold text-primary mb-1">Claim This Deal</h3>
-              <p className="text-sm text-on-surface-variant font-medium">Reserve your price instantly. Pay when you arrive.</p>
-            </div>
-            <div className="flex justify-between items-center mb-4">
-              <span className="font-bold text-on-surface-variant">Total Due Now</span>
-              <span className="font-extrabold text-2xl text-primary">$0.00</span>
-            </div>
-            {showSuccess ? (
-              <div className="w-full h-14 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-                ✓ Reserved! Redirecting...
-              </div>
-            ) : (
-              <Button
-                className="w-full h-14 rounded-full text-lg shadow-xl"
-                onClick={handleClaim}
-                disabled={claiming || isClaimed || deal.quantity_remaining <= 0}
-              >
-                {claiming ? 'Locking Price...' : isClaimed ? '✓ Already Claimed' : deal.quantity_remaining <= 0 ? 'Sold Out' : 'Reserve & Lock Price'}
-              </Button>
-            )}
-            {isClaimed && (
-              <Link href={`/redeem/${deal.id}`} className="block mt-3 text-center text-primary font-bold text-sm hover:underline">
-                View Redemption QR →
-              </Link>
-            )}
-            <p className="text-center text-[10px] font-medium text-outline-variant mt-3 uppercase tracking-widest">No credit card required</p>
-          </div>
-        </div>
-      </div>
+      </footer>
     </div>
   );
 }

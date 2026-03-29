@@ -117,6 +117,7 @@ export const MOCK_DEALS = [
     is_flash_mob: false,
     distance_km: 0.4,
     urgency_level: 'high',
+    impact_score: 1.2,
   },
   {
     id: 'deal-002',
@@ -136,6 +137,7 @@ export const MOCK_DEALS = [
     is_flash_mob: false,
     distance_km: 0.7,
     urgency_level: 'critical',
+    impact_score: 0.8,
   },
   {
     id: 'deal-003',
@@ -157,6 +159,7 @@ export const MOCK_DEALS = [
     flash_mob_discount: 30,
     distance_km: 1.2,
     urgency_level: 'medium',
+    impact_score: 1.5,
   },
   {
     id: 'deal-004',
@@ -176,6 +179,7 @@ export const MOCK_DEALS = [
     is_flash_mob: false,
     distance_km: 0.9,
     urgency_level: 'high',
+    impact_score: 0.5,
   },
   {
     id: 'deal-005',
@@ -195,6 +199,7 @@ export const MOCK_DEALS = [
     is_flash_mob: false,
     distance_km: 0.3,
     urgency_level: 'critical',
+    impact_score: 2.2,
   },
   {
     id: 'deal-006',
@@ -216,6 +221,7 @@ export const MOCK_DEALS = [
     flash_mob_discount: 50,
     distance_km: 1.8,
     urgency_level: 'low',
+    impact_score: 1.1,
   },
 ];
 
@@ -255,6 +261,10 @@ export const MOCK_NOTIFICATIONS = [
 export const MOCK_ACTIVITY = [
   { id: 'a-1', type: 'claim', label: "Claimed '50% Off Ribs'", time: "Today 9:00 AM", value: '+$19 saved', deal_id: 'deal-001' },
   { id: 'a-2', type: 'review', label: "Rated Blue Bottle Coffee ⭐⭐⭐⭐⭐", time: "Today 10:00 AM", value: '+50 pts', deal_id: 'deal-002' },
+  { id: 'a-5', type: 'claim', label: "Redeemed 'Oat Latte Bundle'", time: "Today 11:30 AM", value: '+$8.50 saved', deal_id: 'deal-002' },
   { id: 'a-3', type: 'squad', label: "Joined Yeezy Squad #11", time: "Yesterday", value: 'Pending', deal_id: 'deal-003' },
   { id: 'a-4', type: 'claim', label: "Claimed Yoga Class Pass", time: "2 days ago", value: '+$11 saved', deal_id: 'deal-004' },
+  { id: 'a-6', type: 'claim', label: "Weekly Local Savings Streak", time: "3 days ago", value: '+200 pts', deal_id: 'deal-005' },
+  { id: 'a-7', type: 'claim', label: "Surplus Pack Reserve", time: "Last Week", value: '+$15 saved', deal_id: 'deal-005' },
 ];
+

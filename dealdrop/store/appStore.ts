@@ -20,6 +20,7 @@ interface AppStore {
   claimedDealIds: string[];
   toggleSave: (dealId: string) => void;
   claimDeal: (dealId: string) => void;
+  addActivity: (item: { type: string, label: string, value: string, deal_id?: string }) => void;
 
   // Squads
   squads: typeof MOCK_SQUADS;
@@ -56,20 +57,28 @@ export const useAppStore = create<AppStore>()(
       claimDeal: (dealId) => set((s) => {
         const already = s.claimedDealIds.includes(dealId);
         if (already) return s;
+        
+        const deal = s.deals.find(d => d.id === dealId);
+        const savings = (deal?.original_price || 0) - (deal?.current_price || 0);
+
         return {
           claimedDealIds: [...s.claimedDealIds, dealId],
-          // Decrement quantity_remaining in deals
           deals: s.deals.map(d => d.id === dealId
             ? { ...d, quantity_remaining: Math.max(0, d.quantity_remaining - 1) }
             : d),
-          // Add to activity
+          currentUser: s.currentUser ? {
+            ...s.currentUser,
+            total_savings: s.currentUser.total_savings + savings,
+            reward_points: s.currentUser.reward_points + 150, // standard claim points
+            deal_passport_stamps: s.currentUser.deal_passport_stamps + 1,
+          } : null,
           activity: [
             {
               id: `a-${Date.now()}`,
               type: 'claim',
-              label: `Claimed '${s.deals.find(d => d.id === dealId)?.product_name || 'Deal'}'`,
+              label: `Claimed '${deal?.product_name || 'Pulse Item'}'`,
               time: 'Just now',
-              value: `+$${((s.deals.find(d => d.id === dealId)?.original_price || 0) - (s.deals.find(d => d.id === dealId)?.current_price || 0)).toFixed(2)} saved`,
+              value: `+$${savings.toFixed(2)} saved`,
               deal_id: dealId,
             },
             ...s.activity,
@@ -77,16 +86,43 @@ export const useAppStore = create<AppStore>()(
         };
       }),
 
+      addActivity: (item) => set((s) => ({
+        activity: [
+          { 
+            id: `a-${Date.now()}`, 
+            time: 'Just now', 
+            deal_id: item.deal_id || '',
+            ...item 
+          },
+          ...s.activity
+        ]
+      })),
+
       squads: MOCK_SQUADS,
       joinedSquadIds: [],
       joinSquad: (squadId) => set((s) => {
         const already = s.joinedSquadIds.includes(squadId);
         if (already) return s;
+        
+        const squad = s.squads.find(sq => sq.id === squadId);
+        const deal = s.deals.find(d => d.id === squad?.deal_id);
+
         return {
           joinedSquadIds: [...s.joinedSquadIds, squadId],
           squads: s.squads.map(sq => sq.id === squadId
             ? { ...sq, current_count: sq.current_count + 1 }
             : sq),
+          activity: [
+            {
+              id: `a-${Date.now()}`,
+              type: 'squad',
+              label: `Joined '${deal?.product_name || 'Squad drop'}'`,
+              time: 'Just now',
+              value: 'Pending Sync',
+              deal_id: squad?.deal_id || '',
+            },
+            ...s.activity,
+          ]
         };
       }),
 
@@ -99,7 +135,7 @@ export const useAppStore = create<AppStore>()(
       activity: MOCK_ACTIVITY,
     }),
     {
-      name: 'dealdrop-store',
+      name: 'dealdrop-store-v2', // bumped version
       partialize: (state) => ({
         currentUser: state.currentUser,
         savedDealIds: state.savedDealIds,
