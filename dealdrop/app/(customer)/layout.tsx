@@ -16,11 +16,14 @@ export default function CustomerLayout({
   const [isHydrated, setIsHydrated] = React.useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, setCurrentUser, notifications = [] } = useAppStore();
+  const { currentUser, setCurrentUser, notifications = [], syncNotifications, syncWallet } = useAppStore();
 
   React.useEffect(() => {
     setIsHydrated(true);
-  }, []);
+    // Sync on mount to fetch session/profile
+    syncNotifications();
+    syncWallet();
+  }, [syncNotifications, syncWallet]);
 
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => n.unread).length : 0;
 

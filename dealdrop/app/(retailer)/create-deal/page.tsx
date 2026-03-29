@@ -1,6 +1,6 @@
 'use client';
 
-import { Info, Clock, AlertTriangle, Image as ImageIcon, Rocket, Lightbulb, Share2, Eye, UploadCloud } from 'lucide-react';
+import { AlertCircle, Clock, ImageIcon, Rocket, Lightbulb, Share2, Eye, UploadCloud, Info } from '@/components/ui/Icons';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -36,8 +36,8 @@ export default function CreateDealPage() {
           discount_percent: dist,
           quantity_total: parseInt(quantity) || 0,
           expiry_hours: expiryHours,
-          lat: 41.8962,
-          lng: -87.6242,
+          lat: 13.0827,
+          lng: 80.2707,
           image_url: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?q=80&w=400&auto=format&fit=crop',
           is_flash_mob: false
         })
@@ -81,7 +81,9 @@ export default function CreateDealPage() {
            </span>
            <div className="mt-8">
              <div className="flex items-start gap-1">
-               <TrendingUpIcon />
+               <div className="opacity-80">
+                 <Rocket size={32} />
+               </div>
                <h2 className="text-6xl font-black tracking-tighter">84<span className="text-4xl">%</span></h2>
              </div>
              <p className="font-bold text-yellow-900 leading-tight mt-2">Average claim rate for<br/>flash deals today</p>
@@ -206,14 +208,14 @@ export default function CreateDealPage() {
            </div>
 
            <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3 mb-6 shadow-sm">
-              <span className="text-gray-400 font-bold font-mono tracking-widest text-lg">--:--</span>
-              <div className="h-4 w-px bg-gray-200"></div>
-              <span className="text-sm text-gray-400 font-medium">Custom Time</span>
+               <span className="text-gray-400 font-bold font-mono tracking-widest text-lg">--:--</span>
+               <div className="h-4 w-px bg-gray-200"></div>
+               <span className="text-sm text-gray-400 font-medium">Custom Time</span>
            </div>
 
            <div className="bg-red-50 text-[#b31b25] px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-2 border border-red-100">
-              <AlertTriangle size={16} />
-              Flash deals cannot exceed 4 hours. Pulse algorithm prioritizes shorter duration deals for maximum notification velocity.
+               <AlertCircle size={16} />
+               Flash deals cannot exceed 4 hours. Pulse algorithm prioritizes shorter duration deals for maximum notification velocity.
            </div>
         </div>
 
@@ -268,14 +270,5 @@ export default function CreateDealPage() {
          </div>
       </div>
     </div>
-  );
-}
-
-function TrendingUpIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-      <polyline points="17 6 23 6 23 12"></polyline>
-    </svg>
   );
 }

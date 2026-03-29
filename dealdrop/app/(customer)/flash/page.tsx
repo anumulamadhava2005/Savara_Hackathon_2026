@@ -1,22 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Zap, Users, MapPin, CheckCircle2, Sparkles, ArrowRight, Share2, Timer, Flame } from '@/components/ui/Icons';
+import { Clock, Zap, Users, MapPin, CheckCircle2, Sparkles, ArrowRight, Share2, Timer, Flame, Loader2 } from '@/components/ui/Icons';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { useAppStore } from '@/store/appStore';
 
 export default function FlashFeedPage() {
   const [isHydrated, setIsHydrated] = useState(false);
-  const { deals, squads, joinedSquadIds, joinSquad, claimDeal, claimedDealIds, currentUser } = useAppStore();
+  const { deals, squads, joinedSquadIds, joinSquad, claimedDealIds, syncSquads, syncDeals } = useAppStore();
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
   useEffect(() => {
     setIsHydrated(true);
-  }, []);
+    const init = async () => {
+      await syncDeals();
+      await syncSquads();
+    };
+    init();
+  }, [syncDeals, syncSquads]);
 
-  const flashDeals = deals.filter(d => d.is_flash_mob);
+  const flashDeals = (deals || []).filter(d => d.is_flash_mob);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -27,18 +32,14 @@ export default function FlashFeedPage() {
     if (joiningId) return;
     setJoiningId(squadId);
     
-    // Simulate network delay for "impactful" feel
-    await new Promise(r => setTimeout(r, 1200));
+    await joinSquad(squadId, dealId);
     
     const squad = squads.find(s => s.id === squadId);
-    joinSquad(squadId);
-    
     const newCount = (squad?.current_count || 0) + 1;
     const target = squad?.target_count || 10;
     
     if (newCount >= target) {
       showToast("🚀 Squad target achieved! The deal has been unlocked to your wallet.");
-      claimDeal(dealId);
     } else {
       showToast(`⚡️ Pulse Recorded! ${target - newCount} more members needed to drop.`);
     }
@@ -90,13 +91,13 @@ export default function FlashFeedPage() {
           </div>
         ) : (
           flashDeals.map(deal => {
-            const squad = squads.find(s => s.deal_id === deal.id);
+            const squad = (squads || []).find(s => s.deal_id === deal.id);
             const currentCount = squad?.current_count ?? 0;
-            const targetCount = deal.flash_mob_target ?? 10;
+            const targetCount = deal.flash_mob_target || squad?.target_count || 10;
             const percent = Math.min((currentCount / targetCount) * 100, 100);
             const isComplete = currentCount >= targetCount;
-            const hasJoined = squad ? joinedSquadIds.includes(squad.id) : false;
-            const isClaimed = claimedDealIds.includes(deal.id);
+            const hasJoined = squad ? (joinedSquadIds || []).includes(squad.id) : false;
+            const isClaimed = (claimedDealIds || []).includes(deal.id);
 
             const timeLeft = () => {
               const ms = new Date(deal.expiry_time).getTime() - Date.now();
@@ -108,11 +109,8 @@ export default function FlashFeedPage() {
 
             return (
               <div key={deal.id} className="relative group">
-                {/* Background Decor */}
                 <div className="absolute -inset-1 primary-gradient opacity-0 group-hover:opacity-10 blur-2xl transition-opacity duration-700" />
-                
                 <div className="bg-white rounded-[44px] overflow-hidden shadow-2xl shadow-black/5 border border-surface-container-high relative">
-                  {/* Hero Image Section */}
                   <div className="relative h-[320px] w-full bg-slate-100 overflow-hidden">
                     <img 
                       src={deal.image_url} 
@@ -120,8 +118,6 @@ export default function FlashFeedPage() {
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
-
-                    {/* Top Status Bar */}
                     <div className="absolute top-6 left-6 right-6 flex justify-between items-start">
                       <div className="flex gap-2">
                         <div className="bg-[#b31b25] text-white text-[11px] font-black px-4 py-2 rounded-2xl flex items-center gap-2 shadow-xl border border-white/20">
@@ -132,18 +128,14 @@ export default function FlashFeedPage() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Price & Name */}
                     <div className="absolute bottom-10 left-8 right-8 text-white">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-2 h-2 rounded-full bg-primary" />
-                        <p className="font-black text-white/80 text-[11px] uppercase tracking-widest">{deal.retailers.shop_name}</p>
+                        <p className="font-black text-white/80 text-[11px] uppercase tracking-widest">{deal.retailers?.shop_name || 'Retailer'}</p>
                       </div>
                       <h3 className="text-3xl font-headline font-black leading-none tracking-tight mb-8">
                         {deal.product_name}
                       </h3>
-
-                      {/* Squad Progress Card */}
                       <div className="bg-black/40 backdrop-blur-xl rounded-[28px] p-6 border border-white/10 shadow-2xl">
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center gap-3">
@@ -160,7 +152,7 @@ export default function FlashFeedPage() {
                               </div>
                             </div>
                             <span className="text-[12px] font-black uppercase tracking-wider text-white/80">
-                              {targetCount - currentCount} more needed
+                              {targetCount - currentCount} more members needed
                             </span>
                           </div>
                           <div className="text-right">
@@ -177,22 +169,19 @@ export default function FlashFeedPage() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Footer Action Area */}
                   <div className="p-8 bg-surface-container-low/30">
                     <div className="flex justify-between items-center mb-8">
                       <div className="flex items-center gap-3 text-on-surface-variant font-black text-[11px] uppercase tracking-widest">
                         <div className="w-10 h-10 rounded-2xl bg-white border border-surface-container flex items-center justify-center text-primary shadow-sm">
                            <MapPin size={18} />
                         </div>
-                        <span>{deal.distance_km} KM • {deal.retailers.address.split(',')[0]}</span>
+                        <span>{(deal.distance_km || 0.5).toFixed(1)} KM • {deal.retailers?.address?.split(',')[0] || 'Nearby'}</span>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mb-1 line-through opacity-50">Was ${deal.original_price.toFixed(0)}</p>
                         <div className="font-headline font-black text-4xl text-on-surface leading-none">${deal.current_price.toFixed(2)}</div>
                       </div>
                     </div>
-
                     {isComplete || isClaimed ? (
                       <Link href="/deals" className="block w-full h-18 rounded-[24px] bg-[#1d823b] text-white flex items-center justify-center gap-3 font-headline font-black text-lg shadow-xl hover:bg-[#15612c] transition-all transform hover:scale-[1.02] active:scale-95 group">
                         <CheckCircle2 size={24} fill="white" /> DEAL ACTIVE • VIEW TICKET 
@@ -209,7 +198,7 @@ export default function FlashFeedPage() {
                         >
                           {joiningId === squad?.id ? (
                             <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                              <Loader2 size={20} className="animate-spin" />
                               SYNCING...
                             </div>
                           ) : hasJoined ? (
@@ -222,12 +211,6 @@ export default function FlashFeedPage() {
                           <Share2 size={24} />
                         </button>
                       </div>
-                    )}
-                    
-                    {!hasJoined && !isComplete && (
-                      <p className="text-center text-[10px] text-primary font-black uppercase tracking-[0.2em] mt-6 animate-pulse">
-                        SQUAD DROP PROTOCOL ACTIVE
-                      </p>
                     )}
                   </div>
                 </div>

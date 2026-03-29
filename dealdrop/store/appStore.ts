@@ -19,6 +19,16 @@ export interface ActivityItem {
   created_at?: string;
 }
 
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  unread: boolean;
+  time: string;
+  created_at: string;
+}
+
 interface AppStore {
   // Auth
   currentUser: MockUser | null;
@@ -32,6 +42,7 @@ interface AppStore {
   // Deals
   deals: typeof MOCK_DEALS;
   setDeals: (deals: typeof MOCK_DEALS) => void;
+  syncDeals: () => Promise<void>;
   savedDealIds: string[];
   claimedDealIds: string[];
   toggleSave: (dealId: string) => void;
@@ -40,12 +51,14 @@ interface AppStore {
 
   // Squads
   squads: typeof MOCK_SQUADS;
+  syncSquads: () => Promise<void>;
   joinedSquadIds: string[];
-  joinSquad: (squadId: string) => void;
+  joinSquad: (squadId: string, dealId: string) => Promise<void>;
 
   // Notifications
-  notifications: typeof MOCK_NOTIFICATIONS;
-  markAllRead: () => void;
+  notifications: NotificationItem[];
+  syncNotifications: () => Promise<void>;
+  markAllRead: () => Promise<void>;
   unreadCount: () => number;
 
   // Wallet / Activity
@@ -66,6 +79,13 @@ export const useAppStore = create<AppStore>()(
 
       deals: MOCK_DEALS,
       setDeals: (deals) => set({ deals }),
+      syncDeals: async () => {
+        try {
+          const res = await fetch('/api/deals?lat=' + get().userLat + '&lng=' + get().userLng);
+          const data = await res.json();
+          if (data.deals) set({ deals: data.deals });
+        } catch (err) { console.error('Sync deals failed:', err); }
+      },
       savedDealIds: [],
       claimedDealIds: [],
       toggleSave: (dealId) => set((s) => ({
@@ -97,18 +117,9 @@ export const useAppStore = create<AppStore>()(
               reward_points: (s.currentUser.reward_points || 0) + 150,
               deal_passport_stamps: (s.currentUser.deal_passport_stamps || 0) + 1,
             } : null,
-            activity: [
-              {
-                id: `a-${Date.now()}`,
-                type: 'claim',
-                label: `Claimed '${deal?.product_name || 'Pulse Item'}'`,
-                time: 'Just now',
-                value: `+$${savings.toFixed(2)} saved`,
-                deal_id: dealId,
-              },
-              ...s.activity,
-            ]
           }));
+          get().syncWallet();
+          get().syncNotifications();
         } catch (err) {
           console.error('Claim failed:', err);
         }
@@ -128,17 +139,29 @@ export const useAppStore = create<AppStore>()(
 
       syncWallet: async () => {
         try {
-          const res = await fetch('/api/customer/wallet');
-          const data = await res.json();
-          if (data.profile) {
+          // Unified session sync first
+          const sRes = await fetch('/api/auth/session');
+          const sData = await sRes.json();
+          if (sData.profile) {
             set((s) => ({
-              currentUser: { ...s.currentUser, ...data.profile },
-              activity: data.activity || s.activity,
-              claimedDealIds: data.claims.map((c: any) => c.deal_id),
+              currentUser: { ...s.currentUser, ...sData.profile },
             }));
           }
+
+          // Then wallet-specific totals (only for customers)
+          if (sData.role === 'customer') {
+            const res = await fetch('/api/customer/wallet');
+            const data = await res.json();
+            if (data.profile) {
+              set((s) => ({
+                currentUser: { ...s.currentUser, ...data.profile },
+                activity: data.activity || s.activity,
+                claimedDealIds: data.claims.map((c: any) => c.deal_id),
+              }));
+            }
+          }
         } catch (err) {
-          console.error('Sync failed:', err);
+          console.error('Sync wallet/session failed:', err);
         }
       },
 
@@ -150,19 +173,8 @@ export const useAppStore = create<AppStore>()(
           });
           const data = await res.json();
           if (data.success) {
-            set((s) => ({
-               currentUser: s.currentUser ? { ...s.currentUser, reward_points: data.newPoints } : null,
-               activity: [
-                 {
-                   id: `r-${Date.now()}`,
-                   type: 'redeem',
-                   label: `Redeemed: ${label}`,
-                   time: 'Just now',
-                   value: `-${points} Pulse PTS`,
-                 },
-                 ...s.activity
-               ]
-            }));
+            get().syncWallet();
+            get().syncNotifications();
             return true;
           }
           return false;
@@ -173,43 +185,68 @@ export const useAppStore = create<AppStore>()(
       },
 
       squads: MOCK_SQUADS,
+      syncSquads: async () => {
+        try {
+          const res = await fetch('/api/squads');
+          const data = await res.json();
+          if (data.squads) set({ squads: data.squads });
+        } catch (err) { console.error('Sync squads failed:', err); }
+      },
       joinedSquadIds: [],
-      joinSquad: (squadId) => set((s) => {
-        const already = s.joinedSquadIds.includes(squadId);
-        if (already) return s;
-        
-        const squad = s.squads.find(sq => sq.id === squadId);
-        const deal = s.deals.find(d => d.id === squad?.deal_id);
+      joinSquad: async (squadId, dealId) => {
+        try {
+          const res = await fetch('/api/squads/join', {
+            method: 'POST',
+            body: JSON.stringify({ squad_id: squadId, deal_id: dealId }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            set((s) => ({
+              joinedSquadIds: [...s.joinedSquadIds, squadId],
+            }));
+            if (data.isComplete) {
+              set((s) => ({
+                claimedDealIds: [...s.claimedDealIds, dealId],
+              }));
+              get().syncWallet();
+            }
+            get().syncSquads();
+            get().syncNotifications();
+          }
+        } catch (err) {
+          console.error('Join squad failed:', err);
+        }
+      },
 
-        return {
-          joinedSquadIds: [...s.joinedSquadIds, squadId],
-          squads: s.squads.map(sq => sq.id === squadId
-            ? { ...sq, current_count: sq.current_count + 1 }
-            : sq),
-          activity: [
-            {
-              id: `a-${Date.now()}`,
-              type: 'squad',
-              label: `Joined '${deal?.product_name || 'Squad drop'}'`,
-              time: 'Just now',
-              value: 'Pending Sync',
-              deal_id: squad?.deal_id || '',
-            },
-            ...s.activity,
-          ]
-        };
-      }),
-
-      notifications: MOCK_NOTIFICATIONS,
-      markAllRead: () => set((s) => ({
-        notifications: s.notifications.map(n => ({ ...n, unread: false }))
-      })),
+      notifications: [],
+      syncNotifications: async () => {
+        try {
+          const res = await fetch('/api/customer/notifications');
+          const data = await res.json();
+          if (data.notifications) {
+            const formatted = data.notifications.map((n: any) => ({
+               ...n,
+               time: new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+            set({ notifications: formatted });
+          }
+        } catch (err) { console.error('Sync notifications failed:', err); }
+      },
+      markAllRead: async () => {
+        try {
+          await fetch('/api/customer/notifications/mark-read', {
+            method: 'POST',
+            body: JSON.stringify({ all: true }),
+          });
+          get().syncNotifications();
+        } catch (err) { console.error('Mark all read failed:', err); }
+      },
       unreadCount: () => get().notifications.filter(n => n.unread).length,
 
       activity: MOCK_ACTIVITY,
     }),
     {
-      name: 'dealdrop-store-v3', // bumped version
+      name: 'dealdrop-store-v4', // bumped version
       partialize: (state) => ({
         currentUser: state.currentUser,
         savedDealIds: state.savedDealIds,
@@ -218,6 +255,7 @@ export const useAppStore = create<AppStore>()(
         notifications: state.notifications,
         activity: state.activity as any,
         deals: state.deals,
+        squads: state.squads,
       }),
     }
   )
