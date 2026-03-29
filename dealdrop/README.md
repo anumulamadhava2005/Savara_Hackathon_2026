@@ -1,57 +1,114 @@
-# DealDrop ⚡
+# DealDrop ⚡ - Hyperlocal Flash Sale Platform
 
-DealDrop is a hyperlocal flash sale platform connecting local retailers with nearby customers via real-time, location-based deals. Retailers can clear inventory using AI-driven pricing and voice-to-deal parsing, while customers discover hot discounts in their immediate vicinity.
+Welcome to **DealDrop**, a robust, real-time platform designed specifically for hackathons. DealDrop seamlessly bridges the gap between local retailers looking to clear time-sensitive inventory and nearby customers hunting for the best local deals.
 
-## Tech Stack
+---
 
-- **Framework:** Next.js 14 (App Router)
-- **Styling:** Tailwind CSS + shadcn/ui
-- **Database:** Supabase (PostgreSQL + PostGIS)
-- **Auth:** Supabase Auth
-- **Realtime:** Supabase Realtime (SSE/Websockets)
-- **Maps:** Leaflet.js
-- **AI:** Anthropic Claude API (Sonnet 3.5)
-- **State:** Zustand
-- **Analytics:** Recharts
+## 🌩️ Problem Statement
 
-## Features
+Local retailers, particularly grocery stores, bakeries, and boutique shops, frequently face a critical challenge: **clearing overstocked or near-expiring inventory in a severely limited timeframe.**
+Currently, there is no efficient, highly-localized method for businesses to immediately notify surrounding customers of steep, time-sensitive discounts. Traditional marketing takes too long, and food delivery apps are either too expensive or lack real-time localized push mechanics for flash sales.
 
-- **Hyperlocal Feed:** Discover deals within walking distance (PostGIS enabled).
-- **AI Voice-to-Deal:** Retailers can post deals by speaking.
-- **Dynamic Pricing:** AI suggests discounts based on expiry and stock levels.
-- **Flash Mob Squads:** Group buying mechanic for extra discounts.
-- **Deal Passport:** Gamified hunter ranks and loyalty stamps.
-- **Live Deal Pulse:** Real-time activity feed of nearby claims.
+This disconnect results in two major issues:
+1. **Massive financial waste for retailers** left with unsold expiring goods.
+2. **Lost savings opportunities for customers** who are physically right around the corner but completely unaware of the deal happening inside the store.
 
-## Setup Instructions
+## 💡 The Solution
 
-1. **Clone & Install**
-   ```bash
-   npm install
-   ```
+**DealDrop** solves this by acting as a highly-localized, urgent "flash mob" deal discovery network. 
 
-2. **Environment Variables**
-   Copy `.env.local.example` to `.env.local` and fill in:
-   - Supabase URL & Keys
-   - Anthropic API Key
-   - VAPID keys for Push Notifications
+When a retailer realizes they have products that must be sold by the end of the day, they can instantly drop a "Flash Deal" onto the map. Using our **Dynamic Pulse Engine** and geolocation, customers within walking distance are immediately alerted. 
 
-3. **Supabase Setup**
-   Run the SQL provided in the "DATABASE SCHEMA" section of the prompt in your Supabase SQL Editor to initialize tables, RLS policies, and PostGIS RPC functions.
+**How it specifically solves the problem:**
+- **Real-time Discovery:** Customers open an interactive map to see ticking-time-bomb deals physically near them.
+- **Urgency & Scarcity:** Deals feature live countdowns and remaining stock indicators, creating intense FOMO and driving immediate foot traffic.
+- **Community Engagement:** Users can join "Flash Squads" to unlock deeper tier discounts if enough people claim the deal, turning inventory clearance into a viral, group-buying event.
+- **Persistent Community Feed:** Customers can share their 'pulses' (reviews, shouts, deal finds) in a living, localized Supabase-backed social feed.
 
-4. **Run Development Server**
-   ```bash
-   npm run dev
-   ```
+---
 
-5. **Deploy**
-   Best deployed on Vercel with a Supabase project.
+## 🛠️ Tech Stack
 
-## Project Structure
+- **Frontend & Framework:** Next.js 14 (App Router), React, Tailwind CSS
+- **Database Backend:** Supabase (PostgreSQL)
+- **State Management:** React Hooks (`useState`, `useEffect`) & Context
+- **Hosting / Deployment:** Vercel
 
-- `/app`: App router pages and layouts
-- `/api`: Server-side API endpoints (Edge & Serverless)
-- `/components`: UI and logic-specific components
-- `/lib`: Shared utilities, AI SDK, and Supabase client
-- `/hooks`: Custom React hooks for location, deals, and realtime
-- `/store`: Global state management with Zustand
+---
+
+## 🚀 Key Features
+
+* **Interactive Deal Dashboard:** A location-aware deal explorer displaying active merchant offers based on proximity and time remaining.
+* **Persistent Community Feed:** A real-time, database-backed social feed where local shoppers broadcast their latest savings, leave tips, and 'like' community posts safely.
+* **Squad Flash Mobs:** Group-buying capability where customers can 'team up' to fulfill a retailer's target quota, unlocking a secondary, deeper discount tier for the entire squad.
+* **Optimistic UI Data Handling:** Form submissions like creating a community post instantly mirror locally for a snappy UI while synchronizing with Supabase in the background.
+
+---
+
+## ⚙️ Setup Instructions
+
+Follow these instructions to run the project locally for judging and testing purposes.
+
+### 1. Clone the Repository
+```bash
+git clone <your-repo-url>
+cd dealdrop
+```
+
+### 2. Install Dependencies
+Due to peer-dependency mismatches between React 19 and certain map wrappers, you must append the legacy peer-deps flag when installing locally.
+```bash
+npm install --legacy-peer-deps
+```
+*(Note: If deploying on Vercel, this repository contains a `.npmrc` file that handles this bypass automatically).*
+
+### 3. Setup Supabase
+You will need a Supabase project to handle the backend Community database. 
+1. Create a project on [Supabase.com](https://supabase.com/).
+2. Navigate to your **SQL Editor** in the Supabase Dashboard.
+3. Paste and run the following required schema to initialize the community database:
+
+```sql
+CREATE TABLE IF NOT EXISTS public.community_posts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_name text NOT NULL,
+  avatar text,
+  time_display text NOT NULL DEFAULT 'Just now',
+  location text,
+  content text NOT NULL,
+  image text,
+  likes integer DEFAULT 0,
+  comments integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable read access for all users" ON public.community_posts FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all users" ON public.community_posts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update for likes" ON public.community_posts FOR UPDATE USING (true);
+```
+
+### 4. Configure Environment Variables
+Create a file named `.env.local` in the root of the dealdrop folder and add your specific Supabase credentials found in your Project Settings > API:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL="https://[YOUR-PROJECT-REF].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR-ANON-KEY]"
+```
+
+### 5. Run the Application
+Boot up the Next.js development server:
+```bash
+npm run dev
+```
+Open **http://localhost:3000** in your browser.
+
+---
+
+## 📁 Project Structure
+
+- `app/(customer)`: The mobile-first, consumer-facing application where locals hunt for expiring flash deals and participate in squad buys. Contains the Community Feed.
+- `app/(retailer)`: The merchant-facing dashboard for quickly dropping new deals onto the network.
+- `lib/supabase`: Database schemas, type definitions, and standard SSR client initializers.
+- `components/`: UI assets, buttons, and visual deal-card metrics timers.
