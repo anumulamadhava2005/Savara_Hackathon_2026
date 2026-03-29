@@ -4,10 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { 
-  Search, ChevronDown, Heart, Zap, Navigation, Clock, 
-  TrendingUp, Frown, MapPin, Sparkles, ShieldCheck,
-  RefreshCw, LogOut // Add these to Icons if not there, for now using what we have
+import {
+  Search, ChevronDown, Heart, Zap, Navigation, Clock,
+  TrendingUp, Frown, MapPin, Sparkles, RefreshCw, LogOut
 } from '@/components/ui/Icons';
 import { useAppStore } from '@/store/appStore';
 
@@ -25,45 +24,169 @@ interface Deal {
   image_url: string;
   is_flash_mob: boolean;
   distance_km: number;
-  retailers: { shop_name: string; address: string; avatar_url?: string; rating?: number };
+  retailers?: { shop_name: string; address: string };
 }
 
 const CATEGORIES = ['All', 'Food', 'Wellness', 'Fashion', 'Grocery', 'General'];
 const DEFAULT_LAT = 12.9716;
 const DEFAULT_LNG = 77.5946;
 
+/* ── countdown helper ────────────────────────────────────── */
+function useCountdown(expiry: string) {
+  const [left, setLeft] = useState('');
+  useEffect(() => {
+    const update = () => {
+      const ms = new Date(expiry).getTime() - Date.now();
+      if (ms <= 0) { setLeft('Expired'); return; }
+      const h = Math.floor(ms / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60_000);
+      const s = Math.floor((ms % 60_000) / 1_000);
+      setLeft(h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`);
+    };
+    update();
+    const t = setInterval(update, 1_000);
+    return () => clearInterval(t);
+  }, [expiry]);
+  return left;
+}
+
+/* ── deal card ───────────────────────────────────────────── */
+function DealCard({ deal, saved, onSave }: { deal: Deal; saved: boolean; onSave: () => void }) {
+  const countdown = useCountdown(deal.expiry_time);
+  const isUrgent = deal.quantity_remaining <= 4;
+  const isExpiringSoon = new Date(deal.expiry_time).getTime() - Date.now() < 30 * 60 * 1000;
+
+  return (
+    <div className="relative group">
+      <Link href={`/deals/${deal.id}`} className="block">
+        <div className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-gray-100/80 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer">
+          {/* Image */}
+          <div className="relative h-56 bg-slate-100 overflow-hidden">
+            <img
+              src={deal.image_url || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400'}
+              alt={deal.product_name}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+            {/* Badges */}
+            {deal.discount_percent > 50 && (
+              <div className="absolute top-4 left-4 bg-amber-400 text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 uppercase tracking-widest shadow-lg">
+                <TrendingUp size={12} strokeWidth={3} /> Hot Pick
+              </div>
+            )}
+            {deal.is_flash_mob && (
+              <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 uppercase tracking-widest shadow-lg">
+                <Zap size={12} fill="white" /> Squad Drop
+              </div>
+            )}
+            <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md text-primary text-[12px] font-black px-3 py-1.5 rounded-xl shadow-lg">
+              {Math.round(deal.discount_percent)}% OFF
+            </div>
+
+            {/* Countdown */}
+            <div className={`absolute bottom-4 left-4 backdrop-blur-md text-white text-[11px] font-black px-4 py-2 rounded-2xl flex items-center gap-2 ${isUrgent || isExpiringSoon ? 'bg-red-600/90' : 'bg-black/60'}`}>
+              <Clock size={13} className={isUrgent ? 'animate-pulse' : ''} />
+              {countdown}
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="p-5">
+            <div className="flex justify-between items-start mb-1">
+              <h3 className="font-black text-[16px] text-gray-900 truncate pr-2 max-w-[65%]">
+                {deal.retailers?.shop_name ?? 'Local Store'}
+              </h3>
+              <span className="font-black text-[17px] text-primary">
+                ₹{deal.current_price.toFixed(0)}
+              </span>
+            </div>
+            <p className="text-[13px] font-semibold text-gray-400 truncate mb-4">{deal.product_name}</p>
+            <div className="flex items-center gap-3 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+              <span className="flex items-center gap-1.5">
+                <Navigation size={12} className="text-secondary" /> {deal.distance_km?.toFixed(1) ?? '—'} km
+              </span>
+              <span className={`flex items-center gap-1.5 ${isUrgent ? 'text-red-500 font-black' : ''}`}>
+                <Zap size={12} fill={isUrgent ? 'currentColor' : 'none'} />
+                {deal.quantity_remaining} left
+              </span>
+              <span className="ml-auto capitalize text-gray-300">{deal.category}</span>
+            </div>
+          </div>
+        </div>
+      </Link>
+
+      {/* Save button */}
+      <button
+        onClick={e => { e.preventDefault(); onSave(); }}
+        className={`absolute top-[220px] right-5 w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-4 border-white transition-all duration-300 z-10 active:scale-90 ${saved ? 'bg-red-500 text-white' : 'bg-white text-gray-400 hover:text-red-400'}`}
+      >
+        <Heart size={16} strokeWidth={2.5} fill={saved ? 'white' : 'none'} />
+      </button>
+    </div>
+  );
+}
+
 /* ── main page ───────────────────────────────────────────── */
 export default function DiscoverPage() {
-  const router = useRouter();
-  const { deals, currentUser, savedDealIds, toggleSave } = useAppStore();
-  
-  const [loading, setLoading] = useState(false);
+  const { currentUser, savedDealIds, toggleSave } = useAppStore();
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [userLat, setUserLat] = useState(DEFAULT_LAT);
   const [userLng, setUserLng] = useState(DEFAULT_LNG);
   const [locationLabel, setLocationLabel] = useState('Bangalore, India');
+  const radiusKm = 10;
 
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async pos => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          setUserLat(lat); setUserLng(lng);
-          // reverse geocode via Google Maps Geocoding API if key exists
-          if (process.env.NEXT_PUBLIC_GMAPS_KEY) {
-            try {
-              const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GMAPS_KEY}`);
-              const g = await r.json();
-              const comp = g.results?.[0]?.address_components;
-              const locality = comp?.find((c: any) => c.types.includes('locality'))?.long_name;
-              if (locality) setLocationLabel(locality);
-            } catch {}
-          }
-        }
-      );
+  /* fetch deals from API */
+  const fetchDeals = useCallback(async (lat: number, lng: number, category?: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lng: String(lng),
+        radius_km: String(radiusKm),
+      });
+      if (category && category !== 'All') params.set('category', category.toLowerCase());
+      const res = await fetch(`/api/deals?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      setDeals(json.deals ?? []);
+    } catch {
+      setDeals([]);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [radiusKm]);
+
+  /* geolocation on mount */
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      fetchDeals(DEFAULT_LAT, DEFAULT_LNG);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setUserLat(lat);
+        setUserLng(lng);
+        try {
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          const g = await r.json();
+          const city = g.address?.city || g.address?.town || g.address?.suburb;
+          if (city) setLocationLabel(city);
+        } catch {}
+        fetchDeals(lat, lng);
+      },
+      () => fetchDeals(DEFAULT_LAT, DEFAULT_LNG)
+    );
+  }, []); // eslint-disable-line
+
+  /* re-fetch on category change */
+  useEffect(() => {
+    fetchDeals(userLat, userLng, activeCategory);
+  }, [activeCategory]); // eslint-disable-line
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -71,11 +194,7 @@ export default function DiscoverPage() {
     window.location.href = '/login';
   };
 
-  const filtered = (deals as any[]).filter(d => {
-    // Category filter
-    if (activeCategory !== 'All' && d.category.toLowerCase() !== activeCategory.toLowerCase()) return false;
-    
-    // Search filter
+  const filtered = deals.filter(d => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -85,198 +204,202 @@ export default function DiscoverPage() {
   });
 
   return (
-    <div className="flex flex-col min-h-full bg-surface relative pb-8 md:pb-0 pt-0 font-sans">
-      {/* Mobile header */}
-      <div className="md:hidden flex justify-between items-center p-6 pb-3">
+    <div className="flex flex-col min-h-full bg-[#f5f7fa] pb-24 md:pb-6">
+
+      {/* ── Mobile header ───────────────────────── */}
+      <div className="md:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100/80 px-5 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img 
-              src={currentUser?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop'} 
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md bg-slate-200" 
+            <img
+              src={currentUser?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop'}
+              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md bg-slate-200"
+              alt="avatar"
             />
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full primary-gradient border-2 border-white flex items-center justify-center">
-              <Sparkles size={8} fill="white" />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary border-2 border-white flex items-center justify-center">
+              <Sparkles size={8} />
             </div>
           </div>
           <div>
-            <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Citizen Protocol</p>
-            <p className="font-headline font-black text-lg text-on-surface leading-tight">{currentUser?.full_name?.split(' ')[0] || 'Explorer'}</p>
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest flex items-center gap-1">
+              <MapPin size={10} className="text-primary" /> {locationLabel}
+            </p>
+            <h1 className="text-xl font-black text-gray-900 tracking-tight leading-tight">Discover Deals</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <div className="h-11 px-4 bg-[#ffefdb] text-[#a33700] rounded-2xl flex items-center gap-2 font-black text-sm shadow-sm">
-            <Zap size={16} fill="currentColor" />
-            {(currentUser?.reward_points || 0) > 999 ? `${Math.floor((currentUser?.reward_points || 0) / 1000)}k` : currentUser?.reward_points}
-          </div>
-          <button onClick={handleLogout} className="w-11 h-11 bg-red-50 text-[#b31b25] rounded-2xl flex items-center justify-center shadow-sm">
-            <LogOut size={18} />
+          {currentUser?.reward_points != null && (
+            <div className="h-9 px-3 bg-orange-50 text-primary rounded-xl flex items-center gap-1.5 font-black text-sm">
+              <Zap size={14} fill="currentColor" />
+              {currentUser.reward_points > 999
+                ? `${Math.floor(currentUser.reward_points / 1000)}k`
+                : currentUser.reward_points}
+            </div>
+          )}
+          <button
+            onClick={() => fetchDeals(userLat, userLng, activeCategory)}
+            className="w-9 h-9 bg-orange-50 text-primary rounded-full flex items-center justify-center hover:bg-orange-100 transition-colors"
+          >
+            <RefreshCw size={15} />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-9 h-9 bg-red-50 text-red-400 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors"
+          >
+            <LogOut size={15} />
           </button>
         </div>
       </div>
 
-      {/* Desktop header row */}
-      <div className="hidden md:flex items-center justify-between mb-10">
+      {/* ── Desktop header ──────────────────────── */}
+      <div className="hidden md:flex items-center justify-between mb-6 sticky top-0 z-30 bg-[#f5f7fa]/90 backdrop-blur-xl pt-2 pb-4">
         <div>
-          <h1 className="text-4xl font-headline font-black text-on-surface tracking-tight">Discover</h1>
-          <p className="text-on-surface-variant font-bold mt-1 text-lg">Real-time pulses in {locationLabel}</p>
+          <p className="text-xs text-gray-400 font-bold flex items-center gap-1.5 mb-1">
+            <MapPin size={12} className="text-primary" /> {locationLabel} · {radiusKm} km radius
+          </p>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Discover Deals</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative w-80">
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search size={20} className="text-on-surface-variant/40" />
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
-              type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search local pulses..."
-              className="w-full h-14 bg-white border border-surface-container-high text-on-surface placeholder:text-on-surface-variant/40 rounded-3xl pl-13 pr-6 focus:outline-none focus:ring-4 focus:ring-primary/10 font-bold text-[15px] shadow-sm transition-all"
+              placeholder="Search deals, stores…"
+              className="w-72 h-11 bg-white border border-gray-200 rounded-full pl-10 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
             />
           </div>
-          <button 
-            onClick={handleLogout}
-            className="h-14 px-6 bg-red-50 text-[#b31b25] font-black rounded-3xl flex items-center gap-2 hover:bg-red-100 transition-all text-sm"
+          <button
+            onClick={() => fetchDeals(userLat, userLng, activeCategory)}
+            className="w-11 h-11 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-primary transition-colors shadow-sm"
           >
-            <LogOut size={16} /> Sign Out
+            <RefreshCw size={16} />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-11 h-11 bg-red-50 text-red-400 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors"
+          >
+            <LogOut size={16} />
           </button>
         </div>
       </div>
 
-      {/* Mobile search */}
-      <div className="md:hidden px-6 mb-6">
+      {/* ── Mobile search ───────────────────────── */}
+      <div className="md:hidden px-5 pt-4 pb-2">
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search size={18} className="text-on-surface-variant/40" />
-          </div>
+          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
-            type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search deals, stores..."
-            className="w-full h-12 bg-white text-on-surface placeholder:text-on-surface-variant/40 rounded-2xl pl-12 pr-4 focus:outline-none text-[15px] font-bold shadow-sm border border-surface-container-high/30"
+            placeholder="Search deals, stores…"
+            className="w-full h-11 bg-white rounded-full pl-10 pr-4 text-sm font-medium focus:outline-none shadow-sm border border-gray-100"
           />
         </div>
       </div>
 
-      {/* Category Pills */}
-      <div className="px-6 md:px-0 mb-8 overflow-visible">
-        <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2">
+      {/* ── Category pills ──────────────────────── */}
+      <div className="px-5 md:px-0 py-3">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-[14px] font-black transition-all ${activeCategory === cat
-                  ? 'primary-gradient text-white shadow-xl shadow-primary/20 scale-105'
-                  : 'bg-white text-on-surface hover:bg-surface-container border border-surface-container-high/50 shadow-sm'
-                }`}
+              className={`flex-shrink-0 px-5 py-2 rounded-full text-[13px] font-bold transition-all ${
+                activeCategory === cat
+                  ? 'bg-primary text-white shadow-md shadow-primary/25'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-primary/40'
+              }`}
             >
-              {cat.toUpperCase()}
+              {cat}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Deals Grid */}
-      <div className="px-6 md:px-0 space-y-8">
-        <div className="flex justify-between items-end">
-          <div className="space-y-1">
-             <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-              <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-[0.2em]">Active Pulses</p>
-            </div>
-            <h2 className="text-2xl font-headline font-black text-on-surface tracking-tight">
-              {activeCategory === 'All' ? 'Live Near You' : `${activeCategory} Pulses`}
-            </h2>
+      {/* ── Stats bar ────────────────────────────── */}
+      <div className="px-5 md:px-0 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-gray-100">
+            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-[12px] font-bold text-gray-600">
+              {loading ? 'Loading…' : `${filtered.length} pulse${filtered.length !== 1 ? 's' : ''} active`}
+            </span>
           </div>
-          <Link href="/map" className="text-[13px] font-black text-primary hover:underline flex items-center gap-1.5 uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-xl">
-             Map View <Navigation size={14} className="rotate-45" />
+          <Link
+            href="/map"
+            className="flex items-center gap-2 bg-primary text-white rounded-full px-4 py-2 text-[12px] font-bold shadow-sm shadow-primary/20 hover:opacity-90 transition-opacity"
+          >
+            <MapPin size={13} /> Pulse Map
           </Link>
         </div>
+      </div>
 
-        {filtered.length === 0 ? (
-          <div className="col-span-full py-20 text-center bg-white rounded-[40px] border border-dashed border-surface-container-high shadow-inner">
-            <Frown className="mx-auto text-on-surface-variant/30 mb-6" size={64} />
-            <h3 className="text-xl font-headline font-black text-on-surface mb-2">No pulses detected!</h3>
-            <p className="text-on-surface-variant font-bold max-w-sm mx-auto">Try a different category or search term to bypass the void.</p>
+      {/* ── Main content ─────────────────────────── */}
+      <div className="px-5 md:px-0">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center">
+              <div className="w-7 h-7 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
+            <p className="text-gray-400 font-semibold text-sm">Finding deals near you…</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-4 bg-white rounded-3xl border border-gray-100">
+            <Frown size={48} className="text-gray-200" />
+            <h3 className="text-lg font-bold text-gray-700">No pulses found</h3>
+            <p className="text-sm text-gray-400 max-w-xs text-center font-medium">
+              {deals.length === 0
+                ? 'No active deals within your area right now. Check back soon!'
+                : 'Try a different category or search term.'}
+            </p>
+            <button
+              onClick={() => fetchDeals(userLat, userLng, activeCategory)}
+              className="mt-2 flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full text-sm font-bold hover:opacity-90 transition-opacity"
+            >
+              <RefreshCw size={14} /> Refresh
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((deal: any) => {
-              const isSaved = savedDealIds.includes(deal.id);
-              const isUrgent = deal.quantity_remaining <= 4;
-              return (
-                <div key={deal.id} className="relative group">
-                  <Link href={`/deals/${deal.id}`} className="block">
-                    <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-surface-container-high/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
-                      <div className="relative h-[240px] bg-slate-100 overflow-hidden">
-                        <img
-                          src={deal.image_url}
-                          alt={deal.product_name}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-                        
-                        {deal.discount_percent > 50 && (
-                          <div className="absolute top-4 left-4 bg-[#fcab23] text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 uppercase tracking-widest shadow-lg">
-                            <TrendingUp size={14} strokeWidth={3} /> Hot Pick
-                          </div>
-                        )}
-                        {deal.is_flash_mob && (
-                          <div className="absolute top-4 left-4 primary-gradient text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 uppercase tracking-widest shadow-lg">
-                            <Zap size={14} fill="white" /> Squad Drop
-                          </div>
-                        )}
-                        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md text-primary text-[12px] font-black px-3 py-1.5 rounded-xl shadow-lg border border-white">
-                          {Math.round(deal.discount_percent)}% OFF
-                        </div>
-                        <div className={`absolute bottom-4 left-4 backdrop-blur-md text-white text-[11px] font-black px-4 py-2 rounded-2xl flex items-center gap-2 ${isUrgent ? 'bg-[#b31b25]/90 animate-pulse' : 'bg-black/60'}`}>
-                          <Clock size={14} strokeWidth={2.5} />
-                          {new Date(deal.expiry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                      <div className="p-6">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-headline font-black text-lg text-on-surface truncate pr-2 max-w-[70%]">{deal.retailers.shop_name}</h3>
-                          <span className="font-headline font-black text-xl text-primary">${deal.current_price.toFixed(2)}</span>
-                        </div>
-                        <p className="text-[15px] font-bold text-on-surface-variant truncate mb-5">{deal.product_name}</p>
-                        <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-black uppercase tracking-widest">
-                          <span className="flex items-center gap-1.5"><Navigation size={14} className="text-secondary" /> {deal.distance_km} km Away</span>
-                          <span className={`flex items-center gap-1.5 ${isUrgent ? 'text-[#b31b25]' : 'text-primary'}`}>
-                            <Zap size={14} fill="currentColor" />
-                            {deal.quantity_remaining} left
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                  {/* Save button */}
-                  <button
-                    onClick={() => toggleSave(deal.id)}
-                    className={`absolute bottom-28 right-8 w-12 h-12 rounded-full flex items-center justify-center shadow-xl border-4 border-white transition-all duration-300 z-10 active:scale-90 ${isSaved ? 'bg-[#b31b25] text-white' : 'bg-white text-on-surface-variant hover:text-[#b31b25]'
-                      }`}
-                  >
-                    <Heart size={20} strokeWidth={2.5} fill={isSaved ? 'white' : 'none'} />
-                  </button>
-                </div>
-              );
-            })}
-
-            {/* Surprise Pulse card */}
-            <div className="primary-gradient rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden pulse-animation border-[3px] border-white/20 flex flex-col justify-between min-h-[340px] hover:scale-[1.02] transition-transform duration-500">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl transform translate-x-14 -translate-y-14"></div>
-              <div>
-                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/30 shadow-lg">
-                  <Zap size={32} className="text-[#ffefdb]" fill="currentColor" />
-                </div>
-                <h3 className="text-3xl font-headline font-black mb-3 tracking-tight">Ghost Pulse</h3>
-                <p className="text-[15px] text-white/90 font-bold leading-relaxed">A high-value mystery drop is active within 300m. Location is encrypted. Reveal to claim.</p>
-              </div>
-              <Link href="/map" className="block mt-8 bg-white text-primary text-center font-headline font-black text-base py-5 rounded-2xl shadow-xl hover:bg-surface transition-all active:scale-95 group">
-                REVEAL CO-ORDINATES <Navigation size={18} className="inline ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" fill="currentColor" />
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-extrabold text-gray-900">
+                {activeCategory === 'All' ? 'Live Near You' : `${activeCategory} Deals`}
+              </h2>
+              <Link href="/map" className="text-[13px] font-bold text-primary flex items-center gap-1 hover:underline">
+                View on map <ChevronDown size={14} className="-rotate-90" />
               </Link>
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filtered.map(deal => (
+                <DealCard
+                  key={deal.id}
+                  deal={deal}
+                  saved={savedDealIds.includes(deal.id)}
+                  onSave={() => toggleSave(deal.id)}
+                />
+              ))}
+
+              {/* Ghost Pulse CTA */}
+              <div className="bg-gradient-to-br from-primary to-red-500 rounded-[32px] p-7 text-white relative overflow-hidden flex flex-col justify-between min-h-[320px] border-2 border-white/20 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform duration-500">
+                <div className="absolute top-0 right-0 w-36 h-36 bg-white/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none" />
+                <div>
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-5 backdrop-blur-md border border-white/30">
+                    <Zap size={26} fill="currentColor" className="text-yellow-200" />
+                  </div>
+                  <h3 className="text-[22px] font-black mb-2 tracking-tight">Ghost Pulse!</h3>
+                  <p className="text-[14px] text-white/85 font-medium leading-relaxed">
+                    A mystery deal within 300m is waiting. Tap to reveal on the Pulse Map.
+                  </p>
+                </div>
+                <Link
+                  href="/map"
+                  className="mt-6 bg-white text-primary text-center font-black text-[15px] py-3.5 rounded-2xl block hover:bg-orange-50 transition-colors active:scale-95"
+                >
+                  Reveal Co-ordinates →
+                </Link>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
