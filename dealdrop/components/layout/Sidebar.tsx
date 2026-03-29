@@ -13,9 +13,11 @@ import {
   Store,
 } from '@/components/ui/Icons';
 import { createClient } from '@/lib/supabase/client';
+import { useAppStore } from '@/store/appStore';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { currentUser } = useAppStore();
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -45,12 +47,18 @@ export function Sidebar() {
       {/* Profile Card */}
       <div className="px-6 mb-8">
         <div className="bg-orange-50/50 rounded-xl p-3 border border-orange-100/50 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-primary">
-            <Store size={20} />
+          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-primary overflow-hidden">
+            {currentUser?.avatar_url ? (
+              <img src={currentUser.avatar_url} alt="Shop" className="w-full h-full object-cover" />
+            ) : (
+              <Store size={20} />
+            )}
           </div>
-          <div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">Store Manager</p>
-            <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Downtown Branch</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-900 leading-tight truncate">{currentUser?.full_name || 'Store Manager'}</p>
+            <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider truncate">
+              {currentUser?.address?.split(',')[0] || 'Downtown Branch'}
+            </p>
           </div>
         </div>
       </div>

@@ -1,10 +1,19 @@
 'use client';
 
+import React from 'react';
 import { Bell, Settings, Search } from '@/components/ui/Icons';
 import { usePathname } from 'next/navigation';
+import { useAppStore } from '@/store/appStore';
 
 export function TopNav() {
   const pathname = usePathname();
+  const { currentUser, syncWallet, syncNotifications } = useAppStore();
+
+  React.useEffect(() => {
+    // Sync on mount for retailers too
+    syncWallet();
+    syncNotifications();
+  }, [syncWallet, syncNotifications]);
 
   // Map route to title
   const getPageTitle = () => {
@@ -45,8 +54,19 @@ export function TopNav() {
           <button className="hover:text-primary transition-colors">
             <Settings size={20} />
           </button>
-          <div className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center. ml-2 cursor-pointer">
-            <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Alex Profile" className="w-full h-full object-cover" />
+          
+          <div className="flex items-center gap-3 ml-2">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-gray-900 leading-none">{currentUser?.full_name || 'Retailer'}</p>
+              <p className="text-[10px] text-gray-500 font-medium mt-1 uppercase tracking-wider">Premium Partner</p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center cursor-pointer">
+              <img 
+                src={currentUser?.avatar_url || "https://i.pravatar.cc/150?u=a042581f4e29026704d"} 
+                alt="Profile" 
+                className="w-full h-full object-cover" 
+              />
+            </div>
           </div>
         </div>
       </div>

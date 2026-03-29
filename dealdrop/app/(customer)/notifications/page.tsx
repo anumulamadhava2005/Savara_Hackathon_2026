@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Bell, Settings, MapPin, Users, CircleAlert, Zap, Check } from 'lucide-react';
+import { Bell, Settings, MapPin, Users, AlertCircle, Zap, Check } from '@/components/ui/Icons';
 import { useAppStore } from '@/store/appStore';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   location: <MapPin className="text-[#0058ba]" size={20} />,
   squad: <Users className="text-white" size={20} />,
-  alert: <CircleAlert className="text-[#9f0519]" size={20} />,
+  alert: <AlertCircle className="text-[#9f0519]" size={20} />,
   system: <Zap className="text-[#fcab23]" size={20} />,
 };
 
@@ -20,15 +20,23 @@ const BG_MAP: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const { notifications, markAllRead } = useAppStore();
+  const [isHydrated, setIsHydrated] = useState(false);
+  const { notifications, markAllRead, syncNotifications } = useAppStore();
   const [dismissed, setDismissed] = useState<string[]>([]);
 
-  const unread = notifications.filter(n => n.unread && !dismissed.includes(n.id));
-  const read = notifications.filter(n => (!n.unread || dismissed.includes(n.id)));
+  useEffect(() => {
+    setIsHydrated(true);
+    syncNotifications();
+  }, [syncNotifications]);
+
+  const unread = (notifications || []).filter(n => n.unread && !dismissed.includes(n.id));
+  const read = (notifications || []).filter(n => (!n.unread || dismissed.includes(n.id)));
 
   const handleDismiss = (id: string) => {
     setDismissed(p => [...p, id]);
   };
+
+  if (!isHydrated) return null;
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-surface relative pb-28 md:pb-8">
@@ -96,7 +104,7 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {notifications.length === 0 && (
+        {(notifications || []).length === 0 && (
           <div className="py-16 text-center">
             <Bell size={48} className="text-outline-variant mx-auto mb-4" />
             <h3 className="text-lg font-bold text-on-surface mb-2">All caught up!</h3>

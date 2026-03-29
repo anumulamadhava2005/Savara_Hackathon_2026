@@ -173,6 +173,33 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['squad_members']['Insert']>;
       };
+      community_posts: {
+        Row: {
+          id: string;
+          user_name: string;
+          avatar: string | null;
+          time_display: string;
+          location: string | null;
+          content: string;
+          image: string | null;
+          likes: number;
+          comments: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_name: string;
+          avatar?: string | null;
+          time_display?: string;
+          location?: string | null;
+          content: string;
+          image?: string | null;
+          likes?: number;
+          comments?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['community_posts']['Insert']>;
+      };
     };
     Functions: {
       get_nearby_deals: {
