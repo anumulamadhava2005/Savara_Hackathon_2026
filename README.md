@@ -1,5 +1,7 @@
 # DealDrop ⚡: Hyperlocal Flash Sale Platform
 
+[**Live Demo**](https://savara-hackathon-2026-4jhw.vercel.app/)
+
 Connecting local retailers with nearby customers through real-time, location-based flash deals. 
 
 > **DealDrop** bridges the gap between expiring inventory and price-conscious customers in real-time. Built for the **Savara Hackathon 2026**.
