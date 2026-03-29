@@ -5,14 +5,18 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) return NextResponse.json({ savedIds: [] });
 
   const { data, error } = await supabase
     .from('saved_deals')
     .select('deal_id')
     .eq('user_id', user.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // If table doesn't exist yet, return empty list gracefully
+  if (error) {
+    console.warn('[/api/customer/saved] GET error:', error.message);
+    return NextResponse.json({ savedIds: [] });
+  }
   return NextResponse.json({ savedIds: (data ?? []).map(r => r.deal_id) });
 }
 
@@ -22,7 +26,14 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { deal_id } = await req.json();
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { deal_id } = body;
   if (!deal_id) return NextResponse.json({ error: 'deal_id required' }, { status: 400 });
 
   // Check if already saved
@@ -31,7 +42,7 @@ export async function POST(req: NextRequest) {
     .select('id')
     .eq('user_id', user.id)
     .eq('deal_id', deal_id)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     // Unsave
@@ -40,14 +51,20 @@ export async function POST(req: NextRequest) {
       .delete()
       .eq('user_id', user.id)
       .eq('deal_id', deal_id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.warn('[/api/customer/saved] DELETE error:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ saved: false });
   } else {
     // Save
     const { error } = await supabase
       .from('saved_deals')
       .insert({ user_id: user.id, deal_id });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.warn('[/api/customer/saved] INSERT error:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ saved: true });
   }
 }

@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   if (retailerProfile) {
     return NextResponse.json({ 
       role: 'retailer',
+      retailer: retailerProfile, // full retailer object including location
       profile: {
         id: retailerProfile.id,
         full_name: retailerProfile.shop_name,

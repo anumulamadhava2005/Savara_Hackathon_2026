@@ -51,78 +51,132 @@ function useCountdown(expiry: string) {
 }
 
 /* ── deal card ───────────────────────────────────────────── */
+/* ── retailer card (store list view) — same shape as DealCard ── */
+function RetailerCard({
+  name, address, avatar_url, rating, distance_km, dealCount, category, onSelect
+}: {
+  name: string; address: string; avatar_url?: string;
+  rating?: number; distance_km?: number; dealCount: number;
+  category: string; onSelect: () => void;
+}) {
+  const emoji = category === 'food' ? '🍽️' : category === 'wellness' ? '🧘' : category === 'fashion' ? '👗' : category === 'grocery' ? '🛒' : '🏪';
+
+  return (
+    <div
+      onClick={onSelect}
+      className="relative group cursor-pointer bg-white rounded-[32px] overflow-hidden shadow-sm border border-gray-100/80 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+    >
+      {/* Image / hero area */}
+      <div className="relative h-56 bg-slate-100 overflow-hidden">
+        {avatar_url ? (
+          <img src={avatar_url} alt={name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100 transition-transform duration-700 group-hover:scale-110">
+            <span className="text-7xl">{emoji}</span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+        {/* Deal count badge — top left */}
+        <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest shadow-lg">
+          {dealCount} deal{dealCount !== 1 ? 's' : ''}
+        </div>
+
+        {/* Category chip — top right */}
+        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md text-gray-600 text-[11px] font-black px-3 py-1.5 rounded-xl shadow-lg capitalize">
+          {category}
+        </div>
+
+        {/* Distance — bottom left */}
+        <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white text-[11px] font-black px-4 py-2 rounded-2xl flex items-center gap-2">
+          <Navigation size={12} className="text-secondary" />
+          {distance_km != null ? `${distance_km.toFixed(1)} km` : '—'}
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="p-5">
+        <div className="flex justify-between items-start mb-1">
+          <h3 className="font-black text-[16px] text-gray-900 truncate pr-2 max-w-[75%]">{name}</h3>
+          {rating && (
+            <span className="font-black text-[14px] text-amber-500 flex items-center gap-1">
+              ★ {rating.toFixed(1)}
+            </span>
+          )}
+        </div>
+        <p className="text-[13px] font-semibold text-gray-400 truncate">{address}</p>
+      </div>
+    </div>
+  );
+}
+
+
+/* ── deal card (deal list inside a store) ────────────────── */
 function DealCard({ deal, saved, onSave }: { deal: Deal; saved: boolean; onSave: () => void }) {
-  const countdown = useCountdown(deal.expiry_time);
-  const isUrgent = deal.quantity_remaining <= 4;
-  const isExpiringSoon = new Date(deal.expiry_time).getTime() - Date.now() < 30 * 60 * 1000;
+  const countdown = useCountdown(deal.expiry_time ?? new Date().toISOString());
+  const qty = deal.quantity_remaining ?? 0;
+  const currentPrice = deal.current_price ?? 0;
+  const discPct = deal.discount_percent ?? 0;
+  const isUrgent = qty <= 4;
+  const isExpiringSoon = deal.expiry_time
+    ? new Date(deal.expiry_time).getTime() - Date.now() < 30 * 60 * 1000
+    : false;
 
   return (
     <div className="relative group">
       <Link href={`/deals/${deal.id}`} className="block">
         <div className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-gray-100/80 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer">
           {/* Image */}
-          <div className="relative h-56 bg-slate-100 overflow-hidden">
+          <div className="relative h-48 bg-slate-100 overflow-hidden">
             <img
               src={deal.image_url || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400'}
-              alt={deal.product_name}
+              alt={deal.product_name ?? 'Deal'}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-
+            {/* Save button — inside image top-right */}
+            <button
+              onClick={e => { e.preventDefault(); onSave(); }}
+              className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 z-10 active:scale-90 ${saved ? 'bg-red-500 text-white' : 'bg-black/40 backdrop-blur-sm text-white hover:bg-red-500'}`}
+            >
+              <Heart size={15} strokeWidth={2.5} fill={saved ? 'white' : 'none'} />
+            </button>
             {/* Badges */}
-            {deal.discount_percent > 50 && (
-              <div className="absolute top-4 left-4 bg-amber-400 text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 uppercase tracking-widest shadow-lg">
-                <TrendingUp size={12} strokeWidth={3} /> Hot Pick
+            {discPct > 50 && (
+              <div className="absolute top-3 left-3 bg-amber-400 text-white text-[10px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 uppercase tracking-widest shadow-lg">
+                <TrendingUp size={11} strokeWidth={3} /> Hot
               </div>
             )}
             {deal.is_flash_mob && (
-              <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 uppercase tracking-widest shadow-lg">
-                <Zap size={12} fill="white" /> Squad Drop
+              <div className="absolute top-3 left-3 bg-primary text-white text-[10px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 uppercase tracking-widest shadow-lg">
+                <Zap size={11} fill="white" /> Squad
               </div>
             )}
-            <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md text-primary text-[12px] font-black px-3 py-1.5 rounded-xl shadow-lg">
-              {Math.round(deal.discount_percent)}% OFF
+            {/* Discount badge */}
+            <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-md text-primary text-[12px] font-black px-2.5 py-1 rounded-xl shadow-lg">
+              {Math.round(discPct)}% OFF
             </div>
-
             {/* Countdown */}
-            <div className={`absolute bottom-4 left-4 backdrop-blur-md text-white text-[11px] font-black px-4 py-2 rounded-2xl flex items-center gap-2 ${isUrgent || isExpiringSoon ? 'bg-red-600/90' : 'bg-black/60'}`}>
-              <Clock size={13} className={isUrgent ? 'animate-pulse' : ''} />
+            <div className={`absolute bottom-3 left-3 backdrop-blur-md text-white text-[11px] font-black px-3 py-1.5 rounded-2xl flex items-center gap-1.5 ${isUrgent || isExpiringSoon ? 'bg-red-600/90' : 'bg-black/60'}`}>
+              <Clock size={12} className={isUrgent ? 'animate-pulse' : ''} />
               {countdown}
             </div>
           </div>
-
           {/* Info */}
-          <div className="p-5">
-            <div className="flex justify-between items-start mb-1">
-              <h3 className="font-black text-[16px] text-gray-900 truncate pr-2 max-w-[65%]">
-                {deal.retailers?.shop_name ?? 'Local Store'}
-              </h3>
-              <span className="font-black text-[17px] text-primary">
-                ₹{deal.current_price.toFixed(0)}
-              </span>
+          <div className="p-4">
+            <div className="flex justify-between items-start mb-0.5">
+              <p className="font-black text-[15px] text-gray-900 truncate pr-2 max-w-[65%]">{deal.product_name}</p>
+              <span className="font-black text-[16px] text-primary">₹{currentPrice.toFixed(0)}</span>
             </div>
-            <p className="text-[13px] font-semibold text-gray-400 truncate mb-4">{deal.product_name}</p>
-            <div className="flex items-center gap-3 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
-              <span className="flex items-center gap-1.5">
-                <Navigation size={12} className="text-secondary" /> {deal.distance_km?.toFixed(1) ?? '—'} km
+            <div className="flex items-center gap-3 text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-2">
+              <span className={`flex items-center gap-1 ${isUrgent ? 'text-red-500 font-black' : ''}`}>
+                <Zap size={11} fill={isUrgent ? 'currentColor' : 'none'} /> {qty} left
               </span>
-              <span className={`flex items-center gap-1.5 ${isUrgent ? 'text-red-500 font-black' : ''}`}>
-                <Zap size={12} fill={isUrgent ? 'currentColor' : 'none'} />
-                {deal.quantity_remaining} left
-              </span>
-              <span className="ml-auto capitalize text-gray-300">{deal.category}</span>
+              <span className="line-through text-gray-300 normal-case font-semibold">₹{(deal.original_price ?? 0).toFixed(0)}</span>
             </div>
           </div>
         </div>
       </Link>
-
-      {/* Save button */}
-      <button
-        onClick={e => { e.preventDefault(); onSave(); }}
-        className={`absolute top-[220px] right-5 w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-4 border-white transition-all duration-300 z-10 active:scale-90 ${saved ? 'bg-red-500 text-white' : 'bg-white text-gray-400 hover:text-red-400'}`}
-      >
-        <Heart size={16} strokeWidth={2.5} fill={saved ? 'white' : 'none'} />
-      </button>
     </div>
   );
 }
@@ -137,16 +191,19 @@ export default function DiscoverPage() {
   const [userLat, setUserLat] = useState(DEFAULT_LAT);
   const [userLng, setUserLng] = useState(DEFAULT_LNG);
   const [locationLabel, setLocationLabel] = useState('Bangalore, India');
+  const [showAll, setShowAll] = useState(false);
+  // null = retailer list, string = selected retailer shop_name
+  const [selectedRetailer, setSelectedRetailer] = useState<string | null>(null);
   const radiusKm = 10;
 
   /* fetch deals from API */
-  const fetchDeals = useCallback(async (lat: number, lng: number, category?: string) => {
+  const fetchDeals = useCallback(async (lat: number, lng: number, category?: string, globalMode?: boolean) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         lat: String(lat),
         lng: String(lng),
-        radius_km: String(radiusKm),
+        radius_km: globalMode ? '99999' : String(radiusKm),
       });
       if (category && category !== 'All') params.set('category', category.toLowerCase());
       const res = await fetch(`/api/deals?${params}`);
@@ -185,8 +242,14 @@ export default function DiscoverPage() {
 
   /* re-fetch on category change */
   useEffect(() => {
-    fetchDeals(userLat, userLng, activeCategory);
-  }, [activeCategory]); // eslint-disable-line
+    fetchDeals(userLat, userLng, activeCategory, showAll);
+  }, [activeCategory, showAll]); // eslint-disable-line
+
+  const toggleShowAll = () => {
+    const next = !showAll;
+    setShowAll(next);
+    fetchDeals(userLat, userLng, activeCategory, next);
+  };
 
   const syncSave = async (dealId: string) => {
     toggleSave(dealId); // optimistic local update
@@ -205,14 +268,25 @@ export default function DiscoverPage() {
     window.location.href = '/login';
   };
 
-  const filtered = deals.filter(d => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      d.product_name.toLowerCase().includes(q) ||
-      (d.retailers?.shop_name ?? '').toLowerCase().includes(q)
-    );
-  });
+  // Group valid deals by retailer
+  const retailerMap = React.useMemo(() => {
+    const map = new Map<string, { info: Deal['retailers'] & { distance_km?: number }, deals: Deal[] }>();
+    deals
+      .filter(d => d.id && d.product_name != null)
+      .filter(d => !search || (d.product_name ?? '').toLowerCase().includes(search.toLowerCase()) || (d.retailers?.shop_name ?? '').toLowerCase().includes(search.toLowerCase()))
+      .forEach(d => {
+        const key = d.retailers?.shop_name ?? 'Unknown Store';
+        if (!map.has(key)) {
+          map.set(key, { info: { ...d.retailers, distance_km: d.distance_km } as any, deals: [] });
+        }
+        map.get(key)!.deals.push(d);
+      });
+    return map;
+  }, [deals, search]);
+
+  const retailerList = Array.from(retailerMap.entries());
+  const selectedDeals = selectedRetailer ? (retailerMap.get(selectedRetailer)?.deals ?? []) : [];
+  const totalFiltered = deals.filter(d => d.id && d.product_name != null).length;
 
   return (
     <div className="flex flex-col min-h-full bg-[#f5f7fa] pb-24 md:pb-6">
@@ -326,19 +400,25 @@ export default function DiscoverPage() {
         </div>
       </div>
 
-      {/* ── Stats bar ────────────────────────────── */}
+      {/* ── Stats bar ───────────────────────────────── */}
       <div className="px-5 md:px-0 mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-gray-100">
-            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${showAll ? 'bg-blue-400' : 'bg-green-400'}`} />
             <span className="text-[12px] font-bold text-gray-600">
-              {loading ? 'Loading…' : `${filtered.length} pulse${filtered.length !== 1 ? 's' : ''} active`}
+              {loading ? 'Loading…' : `${retailerList.length} store${retailerList.length !== 1 ? 's' : ''} · ${totalFiltered} deal${totalFiltered !== 1 ? 's' : ''} ${showAll ? 'globally' : 'nearby'}`}
             </span>
           </div>
-          <Link
-            href="/map"
-            className="flex items-center gap-2 bg-primary text-white rounded-full px-4 py-2 text-[12px] font-bold shadow-sm shadow-primary/20 hover:opacity-90 transition-opacity"
+          <button
+            onClick={toggleShowAll}
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-black transition-all duration-300 shadow-sm border ${
+              showAll ? 'bg-blue-500 text-white border-blue-500 shadow-blue-200 shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300 hover:text-blue-500'
+            }`}
           >
+            <span className="text-[14px]">{showAll ? '🌍' : '📍'}</span>
+            {showAll ? 'Showing All' : 'Show All'}
+          </button>
+          <Link href="/map" className="ml-auto flex items-center gap-2 bg-primary text-white rounded-full px-4 py-2 text-[12px] font-bold shadow-sm shadow-primary/20 hover:opacity-90 transition-opacity">
             <MapPin size={13} /> Pulse Map
           </Link>
         </div>
@@ -353,40 +433,67 @@ export default function DiscoverPage() {
             </div>
             <p className="text-gray-400 font-semibold text-sm">Finding deals near you…</p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : retailerList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 bg-white rounded-3xl border border-gray-100">
             <Frown size={48} className="text-gray-200" />
-            <h3 className="text-lg font-bold text-gray-700">No pulses found</h3>
+            <h3 className="text-lg font-bold text-gray-700">No stores found</h3>
             <p className="text-sm text-gray-400 max-w-xs text-center font-medium">
-              {deals.length === 0
-                ? 'No active deals within your area right now. Check back soon!'
-                : 'Try a different category or search term.'}
+              No active deals in your area right now. Try 'Show All' or check back soon!
             </p>
             <button
-              onClick={() => fetchDeals(userLat, userLng, activeCategory)}
+              onClick={() => fetchDeals(userLat, userLng, activeCategory, showAll)}
               className="mt-2 flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full text-sm font-bold hover:opacity-90 transition-opacity"
             >
               <RefreshCw size={14} /> Refresh
             </button>
           </div>
-        ) : (
+        ) : selectedRetailer ? (
+          /* ── DEAL LIST for selected retailer ── */
           <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-extrabold text-gray-900">
-                {activeCategory === 'All' ? 'Live Near You' : `${activeCategory} Deals`}
-              </h2>
-              <Link href="/map" className="text-[13px] font-bold text-primary flex items-center gap-1 hover:underline">
-                View on map <ChevronDown size={14} className="-rotate-90" />
-              </Link>
+            <button
+              onClick={() => setSelectedRetailer(null)}
+              className="flex items-center gap-2 mb-5 text-primary font-black text-[14px] hover:opacity-70 transition-opacity"
+            >
+              <ChevronDown size={18} className="rotate-90" /> Back to stores
+            </button>
+            <div className="mb-4">
+              <h2 className="text-xl font-black text-gray-900">{selectedRetailer}</h2>
+              <p className="text-sm text-gray-400 font-medium">{selectedDeals.length} active deal{selectedDeals.length !== 1 ? 's' : ''}</p>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map(deal => (
+              {selectedDeals.map(deal => (
                 <DealCard
                   key={deal.id}
                   deal={deal}
                   saved={savedDealIds.includes(deal.id)}
                   onSave={() => syncSave(deal.id)}
+                />
+              ))}
+            </div>
+          </>
+        ) : (
+          /* ── RETAILER / STORE LIST ── */
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-extrabold text-gray-900">
+                {activeCategory === 'All' ? 'Stores Near You' : `${activeCategory} Stores`}
+              </h2>
+              <Link href="/map" className="text-[13px] font-bold text-primary flex items-center gap-1 hover:underline">
+                View on map <ChevronDown size={14} className="-rotate-90" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {retailerList.map(([shopName, { info, deals: rDeals }]) => (
+                <RetailerCard
+                  key={shopName}
+                  name={shopName}
+                  address={(info as any)?.address ?? ''}
+                  avatar_url={(info as any)?.avatar_url}
+                  rating={(info as any)?.rating}
+                  distance_km={(info as any)?.distance_km}
+                  dealCount={rDeals.length}
+                  category={(info as any)?.category ?? (rDeals[0]?.category ?? 'general')}
+                  onSelect={() => setSelectedRetailer(shopName)}
                 />
               ))}
 
@@ -402,14 +509,12 @@ export default function DiscoverPage() {
                     A mystery deal within 300m is waiting. Tap to reveal on the Pulse Map.
                   </p>
                 </div>
-                <Link
-                  href="/map"
-                  className="mt-6 bg-white text-primary text-center font-black text-[15px] py-3.5 rounded-2xl block hover:bg-orange-50 transition-colors active:scale-95"
-                >
+                <Link href="/map" className="mt-6 bg-white text-primary text-center font-black text-[15px] py-3.5 rounded-2xl block hover:bg-orange-50 transition-colors active:scale-95">
                   Reveal Co-ordinates →
                 </Link>
               </div>
             </div>
+
           </>
         )}
       </div>

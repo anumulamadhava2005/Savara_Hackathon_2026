@@ -26,11 +26,13 @@ export function Sidebar() {
   };
 
   const navItems = [
-    { label: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
-    { label: 'Create Deal', icon: <PlusCircle size={20} />, path: '/create-deal' },
-    { label: 'Manage Deals', icon: <Package size={20} />, path: '/deals' },
-    { label: 'Fulfillment', icon: <Truck size={20} />, path: '/fulfillment' },
+    { label: 'Dashboard',   icon: <LayoutDashboard size={20} />, path: '/dashboard' },
+    { label: 'Create Deal', icon: <PlusCircle size={20} />,      path: '/create-deal' },
+    { label: 'My Items',    icon: <Package size={20} />,         path: '/items' },
+    { label: 'Manage Deals',icon: <Package size={20} />,         path: '/deals' },
+    { label: 'Fulfillment', icon: <Truck size={20} />,           path: '/fulfillment' },
   ];
+
 
   return (
     <aside className="w-64 h-full bg-white border-r border-gray-100 flex flex-col pt-6 pb-6 shadow-sm z-10 flex-shrink-0">

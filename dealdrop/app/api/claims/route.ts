@@ -1,6 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// GET /api/claims — list current user's claims
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    // Try the join query first
+    const { data, error } = await supabase
+      .from('claims')
+      .select(`
+        id, status, claimed_at, deal_id,
+        deals (
+          id, product_name, description, category,
+          original_price, current_price, discount_percent,
+          quantity_remaining, expiry_time, image_url,
+          is_flash_mob,
+          retailers ( shop_name, address, avatar_url, rating )
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('claimed_at', { ascending: false });
+
+    if (error) throw error;
+
+    const claims = (data ?? []).map((c: any) => ({
+      claim_id: c.id,
+      claim_status: c.status,
+      claimed_at: c.claimed_at,
+      ...(c.deals ?? {}),
+    }));
+
+    return NextResponse.json({ claims });
+  } catch (joinErr: any) {
+    console.error('[GET /api/claims] join query failed, trying fallback:', joinErr.message);
+
+    // Fallback: fetch claims flat, then fetch deals separately
+    const { data: rawClaims, error: claimsErr } = await supabase
+      .from('claims')
+      .select('id, status, claimed_at, deal_id')
+      .eq('user_id', user.id)
+      .order('claimed_at', { ascending: false });
+
+    if (claimsErr) {
+      return NextResponse.json({ error: claimsErr.message }, { status: 500 });
+    }
+
+    if (!rawClaims || rawClaims.length === 0) {
+      return NextResponse.json({ claims: [] });
+    }
+
+    const dealIds = rawClaims.map((c: any) => c.deal_id);
+    const { data: deals } = await supabase
+      .from('deals')
+      .select('id, product_name, description, category, original_price, current_price, discount_percent, quantity_remaining, expiry_time, image_url, is_flash_mob, retailer_id, retailers ( shop_name, address, avatar_url, rating )')
+      .in('id', dealIds);
+
+    const dealMap = new Map((deals ?? []).map((d: any) => [d.id, d]));
+
+    const claims = rawClaims.map((c: any) => {
+      const deal = dealMap.get(c.deal_id) ?? {};
+      return {
+        claim_id: c.id,
+        claim_status: c.status,
+        claimed_at: c.claimed_at,
+        ...deal,
+      };
+    });
+
+    return NextResponse.json({ claims });
+  }
+}
+
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

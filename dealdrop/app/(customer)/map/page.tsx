@@ -218,11 +218,23 @@ function LeafletMap({
     // Deal markers
     deals.forEach(deal => {
       if (!deal.lat || !deal.lng) return;
+
+      const km = deal.distance_km ?? 999;
       const isUrgent = deal.quantity_remaining <= 4;
-      const isFlash = deal.is_flash_mob;
-      const bg = isUrgent ? '#b31b25' : isFlash ? '#f97316' : '#a33700';
-      const pct = Math.round(deal.discount_percent);
+      const pct = Math.round(deal.discount_percent ?? 0);
       const isActive = activeId === deal.id;
+
+      // ── distance-based colour ──────────────────────────────────
+      // green  < 1 km   very close
+      // orange  1–3 km  a little further
+      // red    > 3 km   far away
+      const distColor = km < 1 ? '#16a34a' : km < 3 ? '#f97316' : '#dc2626';
+      const distGlow  = km < 1
+        ? 'rgba(22,163,74,0.35)'
+        : km < 3
+        ? 'rgba(249,115,22,0.35)'
+        : 'rgba(220,38,38,0.35)';
+      const distLabel = km < 1 ? '🟢' : km < 3 ? '🟠' : '🔴';
 
       const icon = L.divIcon({
         className: '',
@@ -230,16 +242,16 @@ function LeafletMap({
           <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;">
             ${isUrgent ? `<div style="
               position:absolute;inset:-6px;border-radius:50%;
-              background:rgba(179,27,37,0.3);
+              background:${distGlow};
               animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;
             "></div>` : ''}
             <div style="
-              width:${isActive ? '42px' : '36px'};
-              height:${isActive ? '42px' : '36px'};
-              background:${bg};
+              width:${isActive ? '44px' : '38px'};
+              height:${isActive ? '44px' : '38px'};
+              background:${distColor};
               border-radius:50%;
               border:${isActive ? '3px solid white' : '2px solid white'};
-              box-shadow:0 4px 12px rgba(0,0,0,0.4);
+              box-shadow:0 4px 14px ${distGlow},0 2px 6px rgba(0,0,0,0.4);
               display:flex;align-items:center;justify-content:center;
               cursor:pointer;
               transition:all 0.2s;
@@ -250,13 +262,13 @@ function LeafletMap({
             </div>
             <div style="
               position:absolute;top:-8px;right:-8px;
-              background:white;color:#ea580c;
+              background:white;color:${distColor};
               font-size:9px;font-weight:900;
               border-radius:999px;
               width:22px;height:22px;
               display:flex;align-items:center;justify-content:center;
               box-shadow:0 2px 6px rgba(0,0,0,0.3);
-              border:1px solid #fed7aa;
+              border:1.5px solid ${distColor};
             ">${pct}%</div>
             <div style="
               margin-top:2px;
@@ -264,7 +276,7 @@ function LeafletMap({
               color:white;font-size:9px;font-weight:700;
               padding:2px 6px;border-radius:999px;
               max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-            ">${deal.retailers?.shop_name ?? 'Store'}</div>
+            ">${distLabel} ${deal.retailers?.shop_name ?? 'Store'}</div>
           </div>
         `,
         iconSize: [60, 60],
@@ -279,6 +291,7 @@ function LeafletMap({
       marker.addTo(layer);
     });
   }, [deals, activeId, userPos]); // eslint-disable-line
+
 
   return (
     <>
@@ -304,7 +317,7 @@ export default function PulseMapPage() {
   const fetchDeals = useCallback(async (lat: number, lng: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/deals?lat=${lat}&lng=${lng}&radius_km=10`);
+      const res = await fetch(`/api/deals?lat=${lat}&lng=${lng}&radius_km=10000`);
       if (!res.ok) throw new Error();
       const json = await res.json();
       const enriched = (json.deals ?? []).map((d: Deal, i: number) => ({

@@ -7,6 +7,8 @@ export type MockUser = typeof MOCK_USERS[0] & {
   total_savings?: number; 
   passport_level?: string; 
   deal_passport_stamps?: number;
+  address?: string;
+  avatar_url?: string;
 };
 
 export interface ActivityItem {
@@ -98,6 +100,7 @@ export const useAppStore = create<AppStore>()(
         try {
           const res = await fetch('/api/claims', {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ deal_id: dealId, squad_id: squadId }),
           });
           const data = await res.json();
@@ -114,14 +117,16 @@ export const useAppStore = create<AppStore>()(
             currentUser: s.currentUser ? {
               ...s.currentUser,
               total_savings: (s.currentUser.total_savings || 0) + savings,
-              reward_points: (s.currentUser.reward_points || 0) + 150,
+              reward_points: (s.currentUser.reward_points || 0) + (data.newPoints ? data.newPoints - (s.currentUser.reward_points || 0) : 150),
               deal_passport_stamps: (s.currentUser.deal_passport_stamps || 0) + 1,
             } : null,
           }));
           get().syncWallet();
           get().syncNotifications();
+          return data; // return for the UI to handle navigation
         } catch (err) {
           console.error('Claim failed:', err);
+          throw err; // re-throw so UI can show error
         }
       },
 

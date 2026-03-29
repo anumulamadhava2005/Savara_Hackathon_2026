@@ -38,6 +38,9 @@ export default function DealDetailsPage() {
   const [notFound, setNotFound] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savePending, setSavePending] = useState(false);
+  const [claimPending, setClaimPending] = useState(false);
+  const [claimError, setClaimError] = useState('');
+  const [claimSuccess, setClaimSuccess] = useState(false);
 
   const isClaimed = claimedDealIds.includes(id);
 
@@ -308,7 +311,7 @@ export default function DealDetailsPage() {
       {/* Checkout Action Bar */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl z-50 rounded-t-[40px] shadow-[0_-15px_40px_rgba(0,0,0,0.08)] border-t border-surface-container-high/50">
         <div className="px-8 pt-6 pb-12 max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="space-y-1">
               <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Pulse Value</p>
               <div className="flex items-baseline gap-2">
@@ -328,20 +331,52 @@ export default function DealDetailsPage() {
             </div>
           </div>
 
-          {isClaimed ? (
-            <Link href={`/redeem/${deal.id}`} className="block w-full">
+          {/* Error message */}
+          {claimError && (
+            <div className="mb-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-sm font-bold text-center">
+              {claimError}
+            </div>
+          )}
+
+          {isClaimed || claimSuccess ? (
+            <Link href="/deals" className="block w-full">
               <button className="w-full h-16 rounded-full flex items-center justify-center gap-3 bg-green-600 text-white font-headline font-black text-lg shadow-xl shadow-green-200 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                <span>View Reserved Claim</span>
+                <span>✓ Claim Reserved — View My Deals</span>
                 <ArrowRight size={22} strokeWidth={2.5} />
               </button>
             </Link>
           ) : (
             <button
-              onClick={() => claimDeal(deal.id)}
-              className="primary-gradient w-full h-16 rounded-full flex items-center justify-center gap-3 text-white font-headline font-black text-lg shadow-[0_12px_24px_rgba(163,55,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+              disabled={claimPending}
+              onClick={async () => {
+                setClaimPending(true);
+                setClaimError('');
+                try {
+                  await claimDeal(deal.id);
+                  setClaimSuccess(true);
+                  // Auto-navigate to my deals after 1.5s
+                  setTimeout(() => router.push('/deals'), 1500);
+                } catch (err: any) {
+                  setClaimError(err?.message ?? 'Claim failed. Please try again.');
+                } finally {
+                  setClaimPending(false);
+                }
+              }}
+              className={`primary-gradient w-full h-16 rounded-full flex items-center justify-center gap-3 text-white font-headline font-black text-lg shadow-[0_12px_24px_rgba(163,55,0,0.3)] transition-all ${
+                claimPending ? 'opacity-70 cursor-not-allowed scale-[0.98]' : 'hover:scale-[1.02] active:scale-[0.98]'
+              }`}
             >
-              <span>Initiate Priority Claim</span>
-              <ArrowRight size={22} strokeWidth={2.5} />
+              {claimPending ? (
+                <>
+                  <div className="w-6 h-6 border-3 border-white/40 border-t-white rounded-full animate-spin" />
+                  <span>Securing Claim…</span>
+                </>
+              ) : (
+                <>
+                  <span>Initiate Priority Claim</span>
+                  <ArrowRight size={22} strokeWidth={2.5} />
+                </>
+              )}
             </button>
           )}
         </div>
@@ -349,3 +384,4 @@ export default function DealDetailsPage() {
     </div>
   );
 }
+

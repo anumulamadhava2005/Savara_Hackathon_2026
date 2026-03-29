@@ -4,30 +4,38 @@ import { createClient } from '@/lib/supabase/server';
 // GET /api/deals?lat=&lng=&radius_km=&category=
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const lat = parseFloat(searchParams.get('lat') ?? '0');
-  const lng = parseFloat(searchParams.get('lng') ?? '0');
+  const lat = parseFloat(searchParams.get('lat') ?? '12.9716');
+  const lng = parseFloat(searchParams.get('lng') ?? '77.5946');
   const radiusKm = parseFloat(searchParams.get('radius_km') ?? '10');
   const category = searchParams.get('category');
 
   const supabase = await createClient();
 
   // Try PostGIS RPC first
-  let rpcQuery = supabase.rpc('get_nearby_deals', {
-    user_lat: lat,
-    user_lng: lng,
-    radius_km: radiusKm,
-  });
-  if (category) rpcQuery = rpcQuery.eq('category', category);
+  try {
+    let rpcQuery = supabase.rpc('get_nearby_deals', {
+      user_lat: lat,
+      user_lng: lng,
+      radius_km: radiusKm,
+    });
+    if (category) rpcQuery = rpcQuery.eq('category', category);
 
-  const { data: rpcData, error: rpcError } = await rpcQuery;
+    const { data: rpcData, error: rpcError } = await rpcQuery;
 
-  if (!rpcError && rpcData) {
-    return NextResponse.json({ deals: rpcData });
+    if (!rpcError && rpcData && rpcData.length > 0) {
+      return NextResponse.json({ deals: rpcData });
+    }
+    if (rpcError) {
+      console.warn('[/api/deals] RPC error:', rpcError.message);
+    } else {
+      console.log('[/api/deals] RPC returned 0 results, trying fallback');
+    }
+  } catch (e: any) {
+    console.warn('[/api/deals] RPC threw:', e.message);
   }
 
-  // Fallback: plain query without geo filtering (PostGIS may not be set up)
-  console.warn('[/api/deals] RPC failed, falling back to plain query:', rpcError?.message);
-  let fallback = supabase
+  // Fallback: plain table query — no geo filter, show all active deals
+  let fallbackQuery = supabase
     .from('deals')
     .select(`
       id, product_name, description, category,
@@ -37,20 +45,24 @@ export async function GET(req: NextRequest) {
       retailers ( shop_name, address, avatar_url, rating )
     `)
     .eq('status', 'active')
-    .gt('expiry_time', new Date().toISOString())
     .gt('quantity_remaining', 0)
     .order('created_at', { ascending: false })
     .limit(50);
 
-  if (category) fallback = fallback.eq('category', category);
+  if (category) fallbackQuery = fallbackQuery.eq('category', category);
 
-  const { data: fallbackData, error: fallbackError } = await fallback;
-  if (fallbackError) return NextResponse.json({ error: fallbackError.message }, { status: 500 });
+  const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+  
+  if (fallbackError) {
+    console.error('[/api/deals] Fallback error:', fallbackError.message);
+    return NextResponse.json({ error: fallbackError.message }, { status: 500 });
+  }
 
-  // Add distance_km = 0 as placeholder since no PostGIS
+  console.log(`[/api/deals] Fallback returned ${fallbackData?.length ?? 0} deals`);
   const deals = (fallbackData ?? []).map((d: any) => ({ ...d, distance_km: 0 }));
   return NextResponse.json({ deals });
 }
+
 
 
 // POST /api/deals — create a new deal (retailer only)
