@@ -22,10 +22,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  
+
   // Validate ownership backwards against retail ID
-  // nested object select syntax resolves
-  if (claim.deals?.retailer_id !== retailer.id) {
+  const claimData = claim as any;
+  if (claimData.deals?.retailer_id !== retailer.id) {
     // Intentionally rollback state
     await supabase.from('claims').update({ status: 'pending' }).eq('id', claimId);
     return NextResponse.json({ error: 'Deal does not belong to your store' }, { status: 403 });

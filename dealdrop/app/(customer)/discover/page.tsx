@@ -1,239 +1,187 @@
-'use client';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+"use client";
 
-export default function DealsPage() {
-  const router = useRouter();
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { Search, ChevronDown, Heart, Zap, Navigation, Clock, TrendingUp, Frown, MapPin } from 'lucide-react';
+import { useAppStore } from '@/store/appStore';
 
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
+const CATEGORIES = ['All', 'Food', 'Wellness', 'Fashion', 'Grocery'];
+
+export default function DiscoverPage() {
+  const { deals, savedDealIds, toggleSave, currentUser } = useAppStore();
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  const filtered = deals.filter(d => {
+    const matchCat = activeCategory === 'All' || d.category.toLowerCase() === activeCategory.toLowerCase();
+    const matchSearch = !search || d.product_name.toLowerCase().includes(search.toLowerCase()) || d.retailers.shop_name.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
   return (
-    <>
-      {/* TopAppBar */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-slate-50/80 backdrop-blur-xl flex justify-between items-center px-6 py-4 w-full">
+    <div className="flex flex-col min-h-full bg-surface relative pb-8 md:pb-0 pt-0">
+      {/* Mobile header */}
+      <div className="md:hidden flex justify-between items-center p-5 pb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden">
-            <img alt="User Profile" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdh1Q9VLYamyE-_Ks9fFHn72T-k7zeDvp83eOirzQuca1i5No2YEmN3Fl4fu3qyk4h6SsAXI1f424vN79ea0D75IzwOv_AZ1JNWK93AowAM9_DVK-Ww7PYZhG_dzxMBbcdE84C2DkRv6kmUcFedqP-w19ss2JdT_gnf0mu2zGKthKqDhuz1vF1c5VzvjsaV0IMzte0eNDb1J70N0eTNqx5OUeOsyNFJYcEYeIIAUreVhdeW99R8RvUDx32RPR7vmEclRpomWdiDUU" />
+          <img src={currentUser?.avatar_url} className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
+          <div>
+            <p className="text-xs text-on-surface-variant font-medium">Good afternoon 👋</p>
+            <p className="font-extrabold text-[15px] text-on-surface leading-tight">{currentUser?.full_name?.split(' ')[0] || 'Explorer'}</p>
           </div>
-          <span className="text-2xl font-extrabold text-[#a33700] tracking-tighter">Local Pulse</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:opacity-80 transition-opacity">
-            <span className="material-symbols-outlined">map</span>
-          </button>
-          <button
-            onClick={handleLogout}
-            title="Logout"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
+        <div className="w-10 h-10 bg-[#ffefdb] text-[#a33700] rounded-full flex items-center justify-center font-black text-sm">
+          {(currentUser?.reward_points || 0) > 999 ? `${Math.floor((currentUser?.reward_points || 0) / 1000)}k` : currentUser?.reward_points}
+          <span className="sr-only">pts</span>
         </div>
-      </header>
+      </div>
 
-      <main className="pt-24 px-6 max-w-5xl mx-auto pb-32">
-        {/* View Toggle & Search */}
-        <div className="flex flex-col gap-6 mb-10">
-          <div className="flex bg-surface-container-low p-1.5 rounded-full w-fit self-center md:self-start">
-            <button className="px-6 py-2.5 rounded-full bg-surface-container-lowest shadow-sm text-primary font-bold text-sm transition-all flex items-center gap-2 cursor-pointer">
-              <span className="material-symbols-outlined text-sm">list</span>
-              List View 📃
-            </button>
-            <button className="px-6 py-2.5 rounded-full text-on-surface-variant font-medium text-sm transition-all flex items-center gap-2 hover:bg-surface-container-high/40 cursor-pointer">
-              <span className="material-symbols-outlined text-sm">map</span>
-              Map View 🗺️
-            </button>
+      {/* Desktop header row */}
+      <div className="hidden md:flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-black text-on-surface tracking-tight">Discover</h1>
+          <p className="text-on-surface-variant font-medium mt-1">Real-time pulses in your neighborhood</p>
+        </div>
+        <div className="relative w-72">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search size={18} className="text-outline-variant" />
           </div>
-          
-          <div className="relative group">
-            <input className="w-full bg-surface-container-highest border-none rounded-2xl py-4 pl-14 pr-6 focus:ring-0 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-on-surface-variant/60 outline-none" placeholder="Search local gems..." type="text" />
-            <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search local gems..."
+            className="w-full h-12 bg-surface-container-low border border-surface-container-high text-on-surface placeholder:text-outline-variant rounded-full pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium text-[15px] shadow-sm"
+          />
+        </div>
+      </div>
+
+      {/* Mobile search */}
+      <div className="md:hidden px-5 mb-4">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search size={16} className="text-outline-variant" />
           </div>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search deals, stores..."
+            className="w-full h-11 bg-[#e6e8ea] text-on-surface placeholder:text-outline-variant rounded-full pl-10 pr-4 focus:outline-none text-[14px] font-medium"
+          />
+        </div>
+      </div>
+
+      {/* Category Pills */}
+      <div className="px-5 md:px-0 mb-6">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-full text-[13px] font-bold shadow-sm transition-all ${activeCategory === cat
+                  ? 'bg-primary text-white btn-gradient shadow-md'
+                  : 'bg-white text-on-surface hover:bg-surface-container border border-surface-container-high/50'
+                }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Deals Grid */}
+      <div className="px-5 md:px-0 space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-[20px] font-extrabold text-on-surface tracking-tight">
+            {activeCategory === 'All' ? 'Live Near You' : `${activeCategory} Deals`}
+          </h2>
+          <Link href="/deals" className="text-[13px] font-bold text-primary hover:underline flex items-center gap-1">
+            My Deals <ChevronDown size={14} className="-rotate-90" />
+          </Link>
         </div>
 
-        {/* Filter Chips */}
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 mb-12 -mx-6 px-6">
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white font-semibold text-sm whitespace-nowrap shadow-lg shadow-primary/20 cursor-pointer">
-            <span className="material-symbols-outlined text-lg">category</span>
-            Category
-          </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-surface-container-lowest border border-outline-variant/15 text-on-surface font-semibold text-sm whitespace-nowrap hover:bg-surface-container-low transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-lg">distance</span>
-            Distance
-          </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-surface-container-lowest border border-outline-variant/15 text-on-surface font-semibold text-sm whitespace-nowrap hover:bg-surface-container-low transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-lg">payments</span>
-            Price
-          </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-surface-container-lowest border border-outline-variant/15 text-on-surface font-semibold text-sm whitespace-nowrap hover:bg-surface-container-low transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-lg">schedule</span>
-            Urgency
-          </button>
-        </div>
-
-        {/* Live Near You (Asymmetric Grid) */}
-        <section className="mb-16">
-          <div className="flex justify-between items-end mb-8">
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-on-surface">Live Near You</h2>
-              <p className="text-on-surface-variant font-medium mt-1">Real-time pulses in your neighborhood</p>
-            </div>
-            <button className="text-primary font-bold text-sm flex items-center gap-1 hover:opacity-80 cursor-pointer">
-              See all <span className="material-symbols-outlined text-xs">arrow_forward</span>
-            </button>
+        {filtered.length === 0 ? (
+          <div className="col-span-full py-16 text-center bg-surface-container-low rounded-3xl border border-surface-container-high">
+            <Frown className="mx-auto text-outline-variant mb-4" size={48} />
+            <h3 className="text-lg font-bold text-on-surface mb-2">No pulses here!</h3>
+            <p className="text-on-surface-variant font-medium max-w-sm mx-auto">Try a different category or search term.</p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* Large Primary Card */}
-            <div className="md:col-span-8 group hover:cursor-pointer">
-              <div className="bg-surface-container-lowest rounded-[2rem] overflow-hidden p-4 h-full flex flex-col transition-transform duration-300 hover:-translate-y-1">
-                <div className="relative h-[320px] rounded-[1.5rem] overflow-hidden mb-4">
-                  <img alt="Gourmet Burger" className="w-full h-full object-cover" data-alt="Mouth-watering gourmet wagyu burger with melting cheese and fresh greens in an upscale industrial restaurant setting, warm mood lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXafrBW0TqJTNERhESsa5gTwfAvt4qpXM3TfxixfDArCxPR3xuHnjZ6o3od6c3ppUPTdytxpuanoFnQ3CXz_Ez1Fu4ivNpJv65PusOTjm0uAvidK-dsboeqzkx-CsqvzRZGC5LstGpSuOFSWHJpBTdenjhs8uKz-aCUVAQrgwW2T2NjKmlg3Wi1zDORARkA1T4JGMXqa35vj5kub4rihA_QvVp7Qs-oSkmeNBoGZhaqzNsI9PKJjvJmQh-J96hYRYqsCt0ZIbTIjM" />
-                  
-                  <div className="absolute top-4 left-4 bg-tertiary-container text-on-tertiary-container px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1 shadow-md">
-                    <span className="material-symbols-outlined text-xs">trending_up</span>
-                    Trending
-                  </div>
-                  
-                  <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                    <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl text-white">
-                      <div className="text-[10px] font-bold uppercase tracking-tighter opacity-80">Ending In</div>
-                      <div className="text-lg font-black leading-none">01:42:05</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((deal, index) => {
+              const isSaved = savedDealIds.includes(deal.id);
+              const isUrgent = deal.quantity_remaining <= 4;
+              return (
+                <div key={deal.id} className="relative group">
+                  <Link href={`/deals/${deal.id}`} className="block">
+                    <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-surface-container-high hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                      <div className="relative h-[220px] bg-slate-100">
+                        <img
+                          src={deal.image_url}
+                          alt={deal.product_name}
+                          className="w-full h-full object-cover"
+                        />
+                        {deal.discount_percent > 50 && (
+                          <div className="absolute top-3 left-3 bg-[#fcab23] text-white text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1 uppercase tracking-wider shadow-sm">
+                            <TrendingUp size={12} strokeWidth={3} /> Hot Pick
+                          </div>
+                        )}
+                        {deal.is_flash_mob && (
+                          <div className="absolute top-3 left-3 bg-primary text-white text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1 uppercase tracking-wider shadow-sm btn-gradient">
+                            <Zap size={12} fill="white" /> Squad Drop
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md text-primary text-[10px] font-black px-2.5 py-1 rounded-md shadow-sm">
+                          {Math.round(deal.discount_percent)}% OFF
+                        </div>
+                        <div className={`absolute bottom-3 left-3 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${isUrgent ? 'bg-[#b31b25]/90' : 'bg-black/60'}`}>
+                          <Clock size={12} className={isUrgent ? 'animate-pulse' : ''} />
+                          {new Date(deal.expiry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-extrabold text-[16px] text-on-surface truncate pr-2 max-w-[70%]">{deal.retailers.shop_name}</h3>
+                          <span className="font-extrabold text-[16px] text-primary">${deal.current_price.toFixed(2)}</span>
+                        </div>
+                        <p className="text-[14px] font-bold text-on-surface-variant truncate mb-3">{deal.product_name}</p>
+                        <div className="flex items-center gap-3 text-[12px] text-on-surface-variant font-medium">
+                          <span className="flex items-center gap-1"><Navigation size={12} /> {deal.distance_km} km away</span>
+                          <span className={`flex items-center gap-1 ${isUrgent ? 'text-[#b31b25] font-bold' : ''}`}>
+                            <Zap size={12} className={isUrgent ? 'fill-[#b31b25] text-[#b31b25]' : ''} />
+                            {deal.quantity_remaining} left
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-primary shadow-xl">
-                      <span className="material-symbols-outlined" data-weight="fill" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-                    </div>
-                  </div>
+                  </Link>
+                  {/* Save button */}
+                  <button
+                    onClick={() => toggleSave(deal.id)}
+                    className={`absolute top-[232px] right-6 w-9 h-9 rounded-full flex items-center justify-center shadow-md border transition-all z-10 ${isSaved ? 'bg-[#b31b25] border-[#b31b25] text-white' : 'bg-white border-surface-container-high text-on-surface-variant hover:text-[#b31b25]'
+                      }`}
+                  >
+                    <Heart size={16} fill={isSaved ? 'white' : 'none'} />
+                  </button>
                 </div>
-                
-                <div className="px-2 pb-2">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-2xl font-bold leading-tight">The Butcher&apos;s Table - 50% Off Signature Ribs</h3>
-                    <span className="text-primary font-black text-2xl">$18</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-on-surface-variant text-sm font-medium">
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-base">near_me</span>
-                      0.4 miles away
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      4.9 (120)
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              );
+            })}
 
-            {/* Vertical Sidebar Card */}
-            <div className="md:col-span-4 flex flex-col gap-6">
-              <div className="bg-surface-container-lowest rounded-[2rem] overflow-hidden p-4 transition-transform duration-300 hover:-translate-y-1 hover:cursor-pointer">
-                <div className="relative h-44 rounded-[1.25rem] overflow-hidden mb-4">
-                  <img alt="Urban Boutique" className="w-full h-full object-cover" data-alt="Interior of a modern high-end sneaker boutique with neon lighting and minimalist display shelves, vibrant urban atmosphere" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFDDVy_hptiVp-sT-FZqmLGboAVAI0uS8dnpWLYLfYkmhfKZZv7YrN1cIVuTe6kUveQlXKQgXNJYEjM0jjxQT53P-YKCroqrysuGJgpoN_kAz1d9BhGUzXKKcCfuOb8h0xNuvVZj-FVa-2fsQ5ygUkZ3yY9kl6ZsRsQRHW0NLkj6oBbQHwWhofXdmysWUhQ3AHtQ4GxGNB9DuAT8Rdw0EQWoUPNS-KIIBxihFvXEkZsN3rkoau98tL-lOwGxz6UZ5nCE0KNNZ-vgk" />
-                  <div className="absolute top-3 left-3 bg-primary text-white px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest">Flash Sale</div>
-                </div>
-                <h3 className="font-bold text-lg leading-tight mb-2">Neon Kicks Drop - 30% Off Storewide</h3>
-                <div className="flex items-center justify-between">
-                  <span className="text-on-surface-variant text-xs font-semibold">1.2 miles away</span>
-                  <span className="bg-surface-container-low px-2 py-1 rounded-lg text-[10px] font-bold text-secondary uppercase">Ending in 4h</span>
-                </div>
+            {/* Surprise Pulse card */}
+            <div className="bg-primary rounded-3xl p-7 text-white shadow-xl btn-gradient relative overflow-hidden pulse-animation border-[2px] border-white/30 flex flex-col justify-between min-h-[320px]">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
+              <div>
+                <Zap size={28} className="mb-4 text-[#ffefdb]" fill="currentColor" />
+                <h3 className="text-[22px] font-extrabold mb-2 tracking-tight">Surprise Pulse!</h3>
+                <p className="text-[14px] text-white/90 font-medium leading-relaxed">A mystery deal within 500m is locked behind the pulse. Unlock to reveal the merchant.</p>
               </div>
-              
-              <div className="bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-6 text-white flex flex-col justify-between h-full min-h-[180px]">
-                <div>
-                  <span className="material-symbols-outlined text-3xl mb-3" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-                  <h3 className="text-xl font-black leading-tight">Surprise Pulse!</h3>
-                  <p className="text-white/80 text-sm mt-2 font-medium">Claim a mystery deal within 500m of your location.</p>
-                </div>
-                <button className="w-full bg-white text-primary font-bold py-3 rounded-2xl shadow-lg mt-4 text-sm active:scale-95 duration-150 transition-transform cursor-pointer">Unlock Deal</button>
-              </div>
+              <Link href="/map" className="block mt-6 bg-white text-primary text-center font-extrabold text-[15px] py-4 rounded-xl shadow-md hover:bg-surface transition-colors">
+                Reveal on Map
+              </Link>
             </div>
           </div>
-        </section>
-
-        {/* AI-Personalized for You (Horizontal Bento) */}
-        <section className="mb-24">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-secondary">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-extrabold tracking-tight text-on-surface">AI-Personalized for You</h2>
-              <p className="text-on-surface-variant text-sm font-medium">Based on your love for Tech &amp; Travel</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Travel Card */}
-            <div className="relative group rounded-[1.5rem] overflow-hidden aspect-[4/5] bg-surface-container-highest cursor-pointer">
-              <img alt="Travel Trip" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="Sunlit street in Paris with the Eiffel Tower in the far distance, vintage aesthetic with warm golden tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQ3rLrFFvg08E2-sMoq3EFPIjiYQe0KLYeCHZWPqCjjt21cSIqJKy-OJbMFfNI-4O8qe7yNnHaQvzXAgyIavcd6nq9tOrK8tBxpGjULJqerAvGzk6cL1qKIdCwKvMammLtmw9VWmlBrDgvJS8pMZlfJoeD9veiFOq8qRoIper-oY-xmz_OyV5Q47xwhnKc8J4DgojeAfUouXWVHkrF4vqx_uHRSuEv4xXrmBDIlTBNGavlHGKSPOZd42PrbEcNhAfbCp72NJ__xZo" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
-                <span className="text-[10px] font-bold text-primary-container uppercase tracking-widest mb-1">Travel</span>
-                <h4 className="text-white font-bold text-lg leading-tight">Weekend Getaway: 40% Off Flights</h4>
-              </div>
-            </div>
-
-            {/* Electronics Card */}
-            <div className="relative group rounded-[1.5rem] overflow-hidden aspect-[4/5] bg-surface-container-highest cursor-pointer">
-              <img alt="Electronics" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="Modern professional noise-canceling headphones resting on a sleek dark oak desk, minimalist aesthetic with clean lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFlAH_b4S4wMEr6D_PStTUHBZ9T3p4MrfY6KLumMNlJYQXhCO2wjZn9DiFFjsj1cfAFNC1VvGPV_YXCguF-ma8CVqFlYjx_TFcDN5TP-86JpUJfDj_tIk3Os_ZN8r7gYsQZIy_bxNAryLvCS-UNF8TZLhtFVj8nPDghjVcrsSkHFC4-s8-iPPURfKHPOkfs_HWlN6prNjKP_9U7OZUxecLJApSzUPD0OqObtPKn9kAd9_1nZv_XjRwsO--ke4PgyRSjt84lq9j6ag" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
-                <span className="text-[10px] font-bold text-secondary-fixed-dim uppercase tracking-widest mb-1">Electronics</span>
-                <h4 className="text-white font-bold text-lg leading-tight">Next-Gen Audio Sale</h4>
-              </div>
-            </div>
-
-            {/* Food Card */}
-            <div className="relative group rounded-[1.5rem] overflow-hidden aspect-[4/5] bg-surface-container-highest cursor-pointer">
-              <img alt="Food" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="Artisanal thin-crust pizza with fresh basil and mozzarella being pulled apart, rustic Italian kitchen background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJVintd4usKiVnKoL1N5sTHJbw_L5Xt2EURrCAG80LB28-hSv4bkh0I9diE21rVuz6lZ0KK55b-9v6VjpELQoOdGI4n1VAKhqzZNlmv6ujahW8Cs38m7hcVALRsu77XbPC-GyK20FJY6gxT1sWCJdN5UorA1kk64lgAPGmov6kbGQDfd8Qdj0m91dFpx1J1u0poNaTVhu-Qd6DdxYeN-MTsrXTT1kDQmOfoRaNsT6-VCwlu4ROp88dqTAYvjBKaK9DTYnv4fZgSY4" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
-                <span className="text-[10px] font-bold text-tertiary-container uppercase tracking-widest mb-1">Food</span>
-                <h4 className="text-white font-bold text-lg leading-tight">Secret Menu Pizza Night</h4>
-              </div>
-            </div>
-
-            {/* Lifestyle Card */}
-            <div className="relative group rounded-[1.5rem] overflow-hidden aspect-[4/5] bg-surface-container-highest cursor-pointer">
-              <img alt="Fitness" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="Interior of a luxury modern gym with high-end equipment and large windows looking over a city skyline at dusk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsb4oq2aPbg9U0acsigAiTh0XnSDo3yF89aVP_ctIUSfYfFiZjiAyUO8ABEjPHeensRQGDSmJd6Lx1roONT41Aa6F79v1Z_Fb0yFXgH232toMcHEFLCmbiOI60zceFq-EL61AciE-kxuj_9pQLl-O_Iby8rw3lUzDlbM-pWxFmsujLHBVMmDj5KTDCrD6YJ1EBuAuGQEfGncHuQIeqQbZkHjD_Rfq9Nzyl0hOiiIdUmCO-VeI4h6cGQ3o04Sky6gqTVNfOTopwsFs" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
-                <span className="text-[10px] font-bold text-white uppercase tracking-widest mb-1">Lifestyle</span>
-                <h4 className="text-white font-bold text-lg leading-tight">Local Yoga: First Month Free</h4>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* BottomNavBar */}
-      <nav className="fixed bottom-8 left-0 right-0 z-50 flex justify-around items-center px-4 mx-auto w-[90%] max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_24px_rgba(44,47,48,0.06)]">
-        <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#a33700] to-[#ff7943] text-white rounded-full p-3 shadow-lg scale-90 duration-200 ease-out cursor-pointer">
-          <span className="material-symbols-outlined">explore</span>
-          <span className="plus-jakarta-sans font-bold text-[10px] uppercase tracking-widest mt-1">Discover</span>
-        </div>
-        <div className="flex flex-col items-center justify-center text-[#595c5d] dark:text-slate-400 p-3 hover:text-[#0058ba] transition-colors cursor-pointer">
-          <span className="material-symbols-outlined">local_offer</span>
-          <span className="plus-jakarta-sans font-bold text-[10px] uppercase tracking-widest mt-1">Deals</span>
-        </div>
-        <div className="flex flex-col items-center justify-center text-[#595c5d] dark:text-slate-400 p-3 hover:text-[#0058ba] transition-colors cursor-pointer">
-          <span className="material-symbols-outlined">bookmark</span>
-          <span className="plus-jakarta-sans font-bold text-[10px] uppercase tracking-widest mt-1">Saved</span>
-        </div>
-        <div className="flex flex-col items-center justify-center text-[#595c5d] dark:text-slate-400 p-3 hover:text-[#0058ba] transition-colors cursor-pointer">
-          <span className="material-symbols-outlined">notifications</span>
-          <span className="plus-jakarta-sans font-bold text-[10px] uppercase tracking-widest mt-1">Activity</span>
-        </div>
-      </nav>
-
-      {/* Floating Action Button (FAB) */}
-      <button className="fixed bottom-32 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-2xl shadow-primary/40 flex items-center justify-center z-40 active:scale-95 transition-all outline-none border-none cursor-pointer">
-        <span className="material-symbols-outlined text-3xl">add</span>
-      </button>
-    </>
+        )}
+      </div>
+    </div>
   );
 }

@@ -28,7 +28,7 @@ export default function RootLayout({
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${jakarta.variable} ${vietnam.variable} antialiased bg-surface text-on-surface font-body min-h-screen`}>
+      <body className={`${jakarta.variable} ${vietnam.variable} antialiased bg-surface text-on-surface font-body min-h-screen relative`}>
         {children}
       </body>
     </html>
