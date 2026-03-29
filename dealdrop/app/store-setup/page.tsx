@@ -68,7 +68,7 @@ export default function StoreSetupPage() {
     <div className="flex flex-col lg:flex-row min-h-screen bg-white">
       
       {/* Left Form Panel */}
-      <div className="w-full lg:w-[480px] flex-shrink-0 flex flex-col p-8 lg:p-12 overflow-y-auto border-r border-gray-100 relative z-10 shadow-xl lg:shadow-none bg-white">
+      <div className="w-full lg:w-[480px] flex-shrink-0 flex flex-col p-8 lg:p-12 overflow-y-auto border-r border-gray-100 relative z-10 bg-white">
         
         {/* Logo */}
         <div className="flex items-center gap-2 mb-12">
@@ -79,13 +79,13 @@ export default function StoreSetupPage() {
         </div>
 
         <div>
-          <h1 className="text-[2.5rem] font-black text-gray-900 leading-tight tracking-tighter mb-4">
-             Store Profile <br />
-             <span className="text-[#a33700]">Setup</span>
-          </h1>
-          <p className="text-gray-500 font-medium text-lg mb-10 leading-relaxed max-w-sm">
-             Tell your local community who you are. This information will help Pulse residents discover your store.
-          </p>
+           <h1 className="text-[2.5rem] font-black text-gray-900 leading-tight tracking-tighter mb-4">
+              Store Profile <br />
+              <span className="text-[#a33700]">Setup</span>
+           </h1>
+           <p className="text-gray-500 font-medium text-lg mb-10 leading-relaxed max-w-sm">
+              Tell your local community who you are. This information will help Pulse residents discover your store.
+           </p>
         </div>
 
         <form className="flex-1 flex flex-col gap-10 max-w-sm w-full" onSubmit={handleSubmit}>
@@ -128,6 +128,7 @@ export default function StoreSetupPage() {
                  return (
                    <button 
                      key={tag.name}
+                     type="button"
                      onClick={() => handleTagToggle(tag.name)}
                      className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all text-sm font-bold shadow-sm ${
                        isSelected 
@@ -162,11 +163,15 @@ export default function StoreSetupPage() {
 
            {/* Submit */}
            <div className="pt-6">
-              <button type="submit" disabled={isLoading} className={`w-full bg-gradient-to-r from-[#a33700] to-[var(--color-primary-fixed)] text-white font-bold text-lg py-5 rounded-2xl shadow-xl shadow-orange-900/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
+              <button 
+                type="submit" 
+                disabled={isLoading} 
+                className={`w-full bg-gradient-to-r from-[#a33700] to-[#b34700] text-white font-bold text-lg py-5 rounded-2xl shadow-xl shadow-orange-900/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}
+              >
                  {isLoading ? 'Saving...' : 'Save Profile & Launch'} <ArrowRight size={20} />
               </button>
               <div className="text-center mt-6">
-                 <button className="text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors">I&apos;ll complete this later</button>
+                 <button type="button" className="text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors">I&apos;ll complete this later</button>
               </div>
            </div>
 
@@ -183,7 +188,7 @@ export default function StoreSetupPage() {
            {/* Radar Circles */}
            <div className="absolute w-[800px] h-[800px] rounded-full border border-white/20"></div>
            <div className="absolute w-[600px] h-[600px] rounded-full border border-white/20"></div>
-           <div className="absolute w-[400px] h-[400px] rounded-full border-2 border-white/40 border-dashed animate-[spin_60s_linear_infinite]"></div>
+           <div className="absolute w-[400px] h-[400px] rounded-full border-2 border-white/40 border-dashed animate-spin"></div>
            <div className="absolute w-[200px] h-[200px] rounded-full border border-white/20"></div>
            
            {/* Location Pin */}
@@ -194,7 +199,7 @@ export default function StoreSetupPage() {
              </div>
              <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center animate-pulse backdrop-blur-sm">
                 <div className="w-10 h-10 bg-[#a33700] rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white">
-                  <Store size={18} />
+                   <Store size={18} />
                 </div>
              </div>
            </div>
@@ -207,14 +212,14 @@ export default function StoreSetupPage() {
 
         {/* Map Controls */}
         <div className="absolute top-6 right-6 flex flex-col gap-3 z-20">
-           <button className="w-12 h-12 bg-white/90 backdrop-blur-md rounded-xl flex items-center justify-center text-gray-700 shadow-xl hover:bg-white transition-colors">
+           <button type="button" className="w-12 h-12 bg-white/90 backdrop-blur-md rounded-xl flex items-center justify-center text-gray-700 shadow-xl hover:bg-white transition-colors">
              <Crosshair size={20} />
            </button>
            <div className="flex flex-col bg-white/90 backdrop-blur-md rounded-xl shadow-xl overflow-hidden">
-             <button className="w-12 h-12 flex items-center justify-center text-gray-700 hover:bg-white/50 transition-colors border-b border-gray-200">
+             <button type="button" className="w-12 h-12 flex items-center justify-center text-gray-700 hover:bg-white/50 transition-colors border-b border-gray-200">
                <Plus size={20} />
              </button>
-             <button className="w-12 h-12 flex items-center justify-center text-gray-700 hover:bg-white/50 transition-colors">
+             <button type="button" className="w-12 h-12 flex items-center justify-center text-gray-700 hover:bg-white/50 transition-colors">
                <Minus size={20} />
              </button>
            </div>
@@ -233,7 +238,7 @@ export default function StoreSetupPage() {
                 </p>
               </div>
            </div>
-           <button className="bg-[#a33700] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-lg shadow-lg hover:bg-orange-800 transition-colors">
+           <button type="button" className="bg-[#a33700] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-lg shadow-lg hover:bg-orange-800 transition-colors">
              Active Sync
            </button>
         </div>
