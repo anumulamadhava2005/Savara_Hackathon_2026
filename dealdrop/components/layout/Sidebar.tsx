@@ -1,53 +1,96 @@
 'use client';
+
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  LayoutDashboard,
+  PlusCircle,
+  Package,
+  Truck,
+  HelpCircle,
+  LogOut,
+  Zap,
+  Store,
+} from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   const navItems = [
-    { label: 'Dashboard', icon: '📊', path: '/dashboard' },
-    { label: 'Post New Deal', icon: '🚀', path: '/post-deal' },
-    { label: 'Manage Deals', icon: '📋', path: '/deals' },
-    { label: 'Analytics', icon: '📈', path: '/analytics' },
-    { label: 'Settings', icon: '⚙️', path: '/settings' },
+    { label: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
+    { label: 'Create Deal', icon: <PlusCircle size={20} />, path: '/create-deal' },
+    { label: 'Manage Deals', icon: <Package size={20} />, path: '/deals' },
+    { label: 'Fulfillment', icon: <Truck size={20} />, path: '/fulfillment' },
   ];
 
   return (
-    <aside className="w-64 h-full bg-indigo-950 text-indigo-100 flex flex-col p-6 gap-8">
-      <div>
-        <h1 className="text-2xl font-black italic tracking-tighter text-white">DealDrop</h1>
-        <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Retailer Portal</p>
+    <aside className="w-64 h-full bg-white border-r border-gray-100 flex flex-col pt-6 pb-6 shadow-sm z-10 flex-shrink-0">
+      {/* Logo */}
+      <div className="px-6 flex items-center gap-2 mb-8">
+        <div className="text-primary">
+          <Zap size={24} fill="currentColor" strokeWidth={0} />
+        </div>
+        <h1 className="text-[1.1rem] font-bold text-primary leading-tight">
+          Pulse Retailer <br /> Portal
+        </h1>
       </div>
 
-      <nav className="flex-1 flex flex-col gap-2">
+      {/* Profile Card */}
+      <div className="px-6 mb-8">
+        <div className="bg-orange-50/50 rounded-xl p-3 border border-orange-100/50 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-primary">
+            <Store size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900 leading-tight">Store Manager</p>
+            <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Downtown Branch</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Primary Navigation */}
+      <nav className="flex-1 px-4 flex flex-col gap-1">
         {navItems.map((item) => {
           const isActive = pathname === item.path;
           return (
             <Link
               key={item.path}
               href={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${
-                isActive ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-indigo-900/50'
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                isActive
+                  ? 'bg-orange-50 text-primary self-start min-w-[12rem]'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
+              <div className={isActive ? 'text-primary' : 'text-gray-400'}>
+                {item.icon}
+              </div>
+              <span className={isActive ? 'font-bold' : ''}>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="pt-6 border-t border-indigo-900">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-indigo-800 flex items-center justify-center text-xl">🏬</div>
-          <div>
-            <p className="text-sm font-bold text-white leading-tight">Green Grocery</p>
-            <p className="text-[10px] text-indigo-400 uppercase font-black">Verified Partner</p>
-          </div>
-        </div>
-        <button className="w-full py-2 rounded-lg bg-indigo-900 text-xs font-bold hover:bg-red-900/50 transition-colors">
-          Log Out
+      {/* Footer Navigation */}
+      <div className="px-4 border-t border-gray-100 pt-4 flex flex-col gap-1">
+        <Link
+          href="/support"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-500 hover:bg-gray-50 transition-all"
+        >
+          <HelpCircle size={20} className="text-gray-400" />
+          <span>Support Center</span>
+        </Link>
+        <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-500 hover:bg-gray-50 hover:text-red-600 transition-all text-left w-full">
+          <LogOut size={20} className="text-gray-400" />
+          <span>Logout</span>
         </button>
       </div>
     </aside>

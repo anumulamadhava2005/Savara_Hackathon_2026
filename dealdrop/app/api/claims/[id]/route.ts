@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   
   // Validate ownership backwards against retail ID
-  // @ts-expect-error - nested object select syntax resolves
+  // nested object select syntax resolves
   if (claim.deals?.retailer_id !== retailer.id) {
     // Intentionally rollback state
     await supabase.from('claims').update({ status: 'pending' }).eq('id', claimId);

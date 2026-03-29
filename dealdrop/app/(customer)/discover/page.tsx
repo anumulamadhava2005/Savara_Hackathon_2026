@@ -1,17 +1,41 @@
+'use client';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+
 export default function DealsPage() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
   return (
     <>
       {/* TopAppBar */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-slate-50/80 backdrop-blur-xl flex justify-between items-center px-6 py-4 w-full">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden">
-            <img alt="User Profile" className="w-full h-full object-cover" data-alt="Close-up portrait of a friendly young man with short dark hair and a warm smile, neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdh1Q9VLYamyE-_Ks9fFHn72T-k7zeDvp83eOirzQuca1i5No2YEmN3Fl4fu3qyk4h6SsAXI1f424vN79ea0D75IzwOv_AZ1JNWK93AowAM9_DVK-Ww7PYZhG_dzxMBbcdE84C2DkRv6kmUcFedqP-w19ss2JdT_gnf0mu2zGKthKqDhuz1vF1c5VzvjsaV0IMzte0eNDb1J70N0eTNqx5OUeOsyNFJYcEYeIIAUreVhdeW99R8RvUDx32RPR7vmEclRpomWdiDUU" />
+            <img alt="User Profile" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdh1Q9VLYamyE-_Ks9fFHn72T-k7zeDvp83eOirzQuca1i5No2YEmN3Fl4fu3qyk4h6SsAXI1f424vN79ea0D75IzwOv_AZ1JNWK93AowAM9_DVK-Ww7PYZhG_dzxMBbcdE84C2DkRv6kmUcFedqP-w19ss2JdT_gnf0mu2zGKthKqDhuz1vF1c5VzvjsaV0IMzte0eNDb1J70N0eTNqx5OUeOsyNFJYcEYeIIAUreVhdeW99R8RvUDx32RPR7vmEclRpomWdiDUU" />
           </div>
           <span className="text-2xl font-extrabold text-[#a33700] tracking-tighter">Local Pulse</span>
         </div>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:opacity-80 transition-opacity">
-          <span className="material-symbols-outlined">map</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface hover:opacity-80 transition-opacity">
+            <span className="material-symbols-outlined">map</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            title="Logout"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
+        </div>
       </header>
 
       <main className="pt-24 px-6 max-w-5xl mx-auto pb-32">

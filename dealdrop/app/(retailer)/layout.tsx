@@ -1,4 +1,5 @@
 import { Sidebar } from '@/components/layout/Sidebar';
+import { TopNav } from '@/components/layout/TopNav';
 
 export default function RetailerLayout({
   children,
@@ -6,13 +7,14 @@ export default function RetailerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-[#f5f6f7] overflow-hidden text-gray-800">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-10">
-        <div className="max-w-5xl mx-auto">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <TopNav />
+        <main className="flex-1 overflow-y-auto w-full">
           {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
