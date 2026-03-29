@@ -188,6 +188,17 @@ export default function DiscoverPage() {
     fetchDeals(userLat, userLng, activeCategory);
   }, [activeCategory]); // eslint-disable-line
 
+  const syncSave = async (dealId: string) => {
+    toggleSave(dealId); // optimistic local update
+    try {
+      await fetch('/api/customer/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deal_id: dealId }),
+      });
+    } catch {}
+  };
+
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -375,7 +386,7 @@ export default function DiscoverPage() {
                   key={deal.id}
                   deal={deal}
                   saved={savedDealIds.includes(deal.id)}
-                  onSave={() => toggleSave(deal.id)}
+                  onSave={() => syncSave(deal.id)}
                 />
               ))}
 

@@ -6,27 +6,52 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const lat = parseFloat(searchParams.get('lat') ?? '0');
   const lng = parseFloat(searchParams.get('lng') ?? '0');
-  const radiusKm = parseFloat(searchParams.get('radius_km') ?? '2');
+  const radiusKm = parseFloat(searchParams.get('radius_km') ?? '10');
   const category = searchParams.get('category');
 
   const supabase = await createClient();
 
-  // PostGIS geo query: find active deals within radius
-  let query = supabase
-    .rpc('get_nearby_deals', {
-      user_lat: lat,
-      user_lng: lng,
-      radius_km: radiusKm,
-    })
-    .eq('status', 'active');
+  // Try PostGIS RPC first
+  let rpcQuery = supabase.rpc('get_nearby_deals', {
+    user_lat: lat,
+    user_lng: lng,
+    radius_km: radiusKm,
+  });
+  if (category) rpcQuery = rpcQuery.eq('category', category);
 
-  if (category) query = query.eq('category', category);
+  const { data: rpcData, error: rpcError } = await rpcQuery;
 
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!rpcError && rpcData) {
+    return NextResponse.json({ deals: rpcData });
+  }
 
-  return NextResponse.json({ deals: data });
+  // Fallback: plain query without geo filtering (PostGIS may not be set up)
+  console.warn('[/api/deals] RPC failed, falling back to plain query:', rpcError?.message);
+  let fallback = supabase
+    .from('deals')
+    .select(`
+      id, product_name, description, category,
+      original_price, current_price, discount_percent,
+      quantity_remaining, expiry_time, image_url,
+      is_flash_mob, status, created_at,
+      retailers ( shop_name, address, avatar_url, rating )
+    `)
+    .eq('status', 'active')
+    .gt('expiry_time', new Date().toISOString())
+    .gt('quantity_remaining', 0)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (category) fallback = fallback.eq('category', category);
+
+  const { data: fallbackData, error: fallbackError } = await fallback;
+  if (fallbackError) return NextResponse.json({ error: fallbackError.message }, { status: 500 });
+
+  // Add distance_km = 0 as placeholder since no PostGIS
+  const deals = (fallbackData ?? []).map((d: any) => ({ ...d, distance_km: 0 }));
+  return NextResponse.json({ deals });
 }
+
 
 // POST /api/deals — create a new deal (retailer only)
 export async function POST(req: NextRequest) {

@@ -91,7 +91,7 @@ export async function proxy(request: NextRequest) {
   const isRetailer = !!retailer;
 
   // Retailer-only routes
-  const retailerPaths = ['/dashboard', '/create-deal', '/deals', '/fulfillment'];
+  const retailerPaths = ['/dashboard', '/create-deal', '/fulfillment'];
   const isRetailerRoute = retailerPaths.some(p => pathname.startsWith(p));
 
   // Customer trying to access retailer routes → send to customer home
@@ -102,7 +102,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Customer-only routes
-  const customerPaths = ['/discover', '/map', '/passport', '/claim', '/deal', '/interests', '/location', '/welcome'];
+  const customerPaths = ['/discover', '/map', '/passport', '/claim', '/deal', '/interests', '/location', '/welcome', '/deals', '/saved', '/wallet', '/flash', '/community', '/notifications'];
   const isCustomerRoute = customerPaths.some(p => pathname.startsWith(p));
 
   // Retailer trying to access customer routes → send to retailer dashboard
