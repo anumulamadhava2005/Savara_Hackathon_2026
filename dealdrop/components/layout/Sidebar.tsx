@@ -11,7 +11,7 @@ import {
   LogOut,
   Zap,
   Store,
-} from 'lucide-react';
+} from '@/components/ui/Icons';
 import { createClient } from '@/lib/supabase/client';
 
 export function Sidebar() {

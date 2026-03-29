@@ -5,7 +5,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, LineChart, Line, Cell
 } from 'recharts';
-import { Tag, Bookmark, Zap, Calendar, ArrowRight, Activity, TrendingUp } from 'lucide-react';
+import { Tag, Bookmark, Zap, Calendar, Activity, TrendingUp } from '@/components/ui/Icons';
 import { useState, useEffect } from 'react';
 
 const areaData = [

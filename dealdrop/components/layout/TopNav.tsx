@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Settings, Search } from 'lucide-react';
+import { Bell, Settings, Search } from '@/components/ui/Icons';
 import { usePathname } from 'next/navigation';
 
 export function TopNav() {
