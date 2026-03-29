@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  
+
   // Validate ownership backwards against retail ID
   const claimData = claim as any;
   if (claimData.deals?.retailer_id !== retailer.id) {

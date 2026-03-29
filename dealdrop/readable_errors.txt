@@ -1,0 +1,9 @@
+﻿app/(retailer)/dashboard/page.tsx(88,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: Props): Line', gave the following error.
+    Type '"smooth"' is not assignable to type 'CurveType | undefined'.
+  Overload 2 of 2, '(props: Props, context: any): Line', gave the following error.
+    Type '"smooth"' is not assignable to type 'CurveType | undefined'.
+app/(retailer)/deals/page.tsx(105,23): error TS2552: Cannot find name 'Clock'. Did you mean 'Lock'?
+app/(retailer)/deals/page.tsx(153,23): error TS2552: Cannot find name 'Clock'. Did you mean 'Lock'?
+app/(retailer)/deals/page.tsx(201,23): error TS2552: Cannot find name 'Clock'. Did you mean 'Lock'?
+app/api/claims/[id]/route.ts(27,3): error TS2578: Unused '@ts-expect-error' directive.

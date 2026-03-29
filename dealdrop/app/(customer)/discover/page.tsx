@@ -78,11 +78,10 @@ export default function DiscoverPage() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`flex-shrink-0 px-5 py-2.5 rounded-full text-[13px] font-bold shadow-sm transition-all ${
-                activeCategory === cat
+              className={`flex-shrink-0 px-5 py-2.5 rounded-full text-[13px] font-bold shadow-sm transition-all ${activeCategory === cat
                   ? 'bg-primary text-white btn-gradient shadow-md'
                   : 'bg-white text-on-surface hover:bg-surface-container border border-surface-container-high/50'
-              }`}
+                }`}
             >
               {cat}
             </button>
@@ -159,9 +158,8 @@ export default function DiscoverPage() {
                   {/* Save button */}
                   <button
                     onClick={() => toggleSave(deal.id)}
-                    className={`absolute top-[232px] right-6 w-9 h-9 rounded-full flex items-center justify-center shadow-md border transition-all z-10 ${
-                      isSaved ? 'bg-[#b31b25] border-[#b31b25] text-white' : 'bg-white border-surface-container-high text-on-surface-variant hover:text-[#b31b25]'
-                    }`}
+                    className={`absolute top-[232px] right-6 w-9 h-9 rounded-full flex items-center justify-center shadow-md border transition-all z-10 ${isSaved ? 'bg-[#b31b25] border-[#b31b25] text-white' : 'bg-white border-surface-container-high text-on-surface-variant hover:text-[#b31b25]'
+                      }`}
                   >
                     <Heart size={16} fill={isSaved ? 'white' : 'none'} />
                   </button>
