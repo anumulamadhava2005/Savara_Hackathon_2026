@@ -1,108 +1,117 @@
+"use client";
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, Utensils, Dumbbell, ShoppingBasket, Laptop, Shirt, Plane, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+
 export default function InterestsPage() {
+  const [selected, setSelected] = useState<string[]>(['Food', 'Electronics']);
+
+  const toggleInterest = (id: string) => {
+    if (selected.includes(id)) {
+      setSelected(selected.filter((item) => item !== id));
+    } else {
+      setSelected([...selected, id]);
+    }
+  };
+
+  const categories = [
+    { id: 'Food', label: 'Food', icon: Utensils },
+    { id: 'Fitness', label: 'Fitness', icon: Dumbbell, subtitle: 'ACTIVE LIFE' },
+    { id: 'Groceries', label: 'Groceries', icon: ShoppingBasket },
+    { id: 'Electronics', label: 'Electronics', icon: Laptop },
+    { id: 'Fashion', label: 'Fashion', icon: Shirt },
+    { id: 'Travel', label: 'Travel', icon: Plane },
+  ];
+
   return (
-    <>
-      {/* Top Navigation Bar */}
-      <header className="fixed top-0 w-full z-50 glass-header px-6 h-16 flex items-center">
-        <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-primary cursor-pointer">arrow_back</span>
-          <span className="text-xl font-bold tracking-tight text-orange-700 font-headline">Urban Pulse</span>
-        </div>
-      </header>
+    <div className="flex flex-col min-h-[100dvh] bg-surface relative">
+      {/* Header */}
+      <div className="flex items-center p-6 pb-2 pt-8 z-10 sticky top-0 bg-surface">
+        <Link href="/login" className="mr-4 text-primary hover:text-primary-dim transition-colors">
+          <ArrowLeft size={24} strokeWidth={2.5} />
+        </Link>
+        <span className="text-primary font-bold tracking-tight text-lg">Urban Pulse</span>
+      </div>
 
-      <main className="pt-24 pb-32 px-6 max-w-lg mx-auto">
-        {/* Header Section */}
-        <section className="mb-10">
-          <h1 className="font-headline text-[2.5rem] leading-tight font-extrabold text-on-background mb-3">
-            What interests you?
-          </h1>
-          <p className="text-on-surface-variant font-body text-lg leading-relaxed">
-            Pick at least 3 categories to personalize your local pulse.
-          </p>
-        </section>
+      {/* Content */}
+      <div className="px-6 pt-4 pb-40 flex-1 overflow-y-auto no-scrollbar">
+        <h1 className="text-4xl font-extrabold text-on-surface mb-4 leading-[1.1] tracking-tight">
+          What interests<br />you?
+        </h1>
+        <p className="text-[15px] font-medium text-on-surface-variant mb-8 leading-relaxed">
+          Pick at least 3 categories to<br />personalize your local pulse.
+        </p>
 
-        {/* Category Bento Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Food (Selected State) */}
-          <div className="relative bg-orange-100 rounded-3xl p-6 flex flex-col justify-between min-h-[160px] border-2 border-primary transition-all scale-95 duration-200 cursor-pointer">
-            <div className="flex justify-between items-start">
-              <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>restaurant</span>
-              <span className="bg-primary text-white rounded-full p-1 flex items-center justify-center">
-                <span className="material-symbols-outlined text-sm">check</span>
-              </span>
-            </div>
-            <span className="font-headline text-primary font-bold text-lg">Food</span>
-          </div>
-
-          {/* Fitness (Tall Asymmetric Layout) */}
-          <div className="row-span-2 bg-surface-container-lowest rounded-3xl p-6 flex flex-col justify-between min-h-[220px] shadow-sm shadow-slate-200/50 hover:bg-slate-50 transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-on-surface-variant text-4xl">fitness_center</span>
-            <div>
-              <span className="font-headline text-on-background font-bold text-lg block mb-1">Fitness</span>
-              <span className="text-xs text-on-surface-variant font-label uppercase tracking-widest">Active Life</span>
-            </div>
-          </div>
-
-          {/* Groceries */}
-          <div className="bg-surface-container-lowest rounded-3xl p-6 flex flex-col justify-between min-h-[160px] shadow-sm shadow-slate-200/50 hover:bg-slate-50 transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-on-surface-variant text-3xl">shopping_basket</span>
-            <span className="font-headline text-on-background font-bold text-lg">Groceries</span>
-          </div>
-
-          {/* Electronics (Selected State) */}
-          <div className="bg-orange-100 rounded-3xl p-6 flex flex-col justify-between min-h-[160px] border-2 border-primary transition-all scale-95 duration-200 cursor-pointer">
-            <div className="flex justify-between items-start">
-              <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>devices</span>
-              <span className="bg-primary text-white rounded-full p-1 flex items-center justify-center">
-                <span className="material-symbols-outlined text-sm">check</span>
-              </span>
-            </div>
-            <span className="font-headline text-primary font-bold text-lg">Electronics</span>
-          </div>
-
-          {/* Fashion (Tall Asymmetric Layout) */}
-          <div className="row-span-2 bg-surface-container-lowest rounded-3xl p-6 flex flex-col justify-between min-h-[220px] shadow-sm shadow-slate-200/50 hover:bg-slate-50 transition-colors cursor-pointer">
-            <span className="material-symbols-outlined text-on-surface-variant text-4xl">apparel</span>
-            <div>
-              <span className="font-headline text-on-background font-bold text-lg block mb-1">Fashion</span>
-              <span className="text-xs text-on-surface-variant font-label uppercase tracking-widest">Streetwear</span>
-            </div>
-          </div>
-
-          {/* Travel (Selected State) */}
-          <div className="bg-orange-100 rounded-3xl p-6 flex flex-col justify-between min-h-[160px] border-2 border-primary transition-all scale-95 duration-200 cursor-pointer">
-            <div className="flex justify-between items-start">
-              <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>explore</span>
-              <span className="bg-primary text-white rounded-full p-1 flex items-center justify-center">
-                <span className="material-symbols-outlined text-sm">check</span>
-              </span>
-            </div>
-            <span className="font-headline text-primary font-bold text-lg">Travel</span>
-          </div>
-        </div>
-
-        {/* Progress Indicator */}
-        <div className="mt-12 flex justify-center gap-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-outline-variant/30"></div>
-          <div className="h-1.5 w-1.5 rounded-full bg-outline-variant/30"></div>
-          <div className="h-1.5 w-8 rounded-full bg-primary"></div>
-        </div>
-      </main>
-
-      {/* Fixed Bottom Action Area */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-surface via-surface/90 to-transparent">
-        <div className="max-w-lg mx-auto">
-          <button className="btn-gradient w-full py-5 rounded-full text-white font-headline font-bold text-lg shadow-2xl shadow-primary/20 active:scale-95 transition-transform">
-            Get Started
-          </button>
-          <p className="text-center mt-4 text-on-surface-variant font-label text-xs">
-            You can change these anytime in your profile settings.
-          </p>
+        {/* Categories Grid */}
+        <div className="bento-grid">
+          {categories.map((cat, idx) => {
+            const isSelected = selected.includes(cat.id);
+            const Icon = cat.icon;
+            // Make Food (0) and Electronics (3) tall for bento look
+            const isTall = idx === 0 || idx === 3;
+            
+            return (
+              <div 
+                key={cat.id}
+                onClick={() => toggleInterest(cat.id)}
+                className={`
+                  relative cursor-pointer rounded-3xl p-5 flex flex-col justify-between transition-all duration-300
+                  ${isTall ? 'aspect-[3/4] bento-item-tall' : 'aspect-square'}
+                  ${isSelected ? 'bg-[#ffefdb] border border-primary/20 shadow-sm' : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)] hover:shadow-md'}
+                `}
+              >
+                <div className="flex justify-between items-start w-full">
+                  <Icon 
+                    size={28} 
+                    className={isSelected ? 'text-[#8f2f00]' : 'text-outline-variant'} 
+                    strokeWidth={isSelected ? 2.5 : 2}
+                  />
+                  {isSelected && (
+                    <CheckCircle2 size={20} className="text-[#8f2f00]" fill="#ffefdb" />
+                  )}
+                </div>
+                
+                <div className="mt-auto">
+                  <h3 className={`font-bold ${isSelected ? 'text-[#8f2f00]' : 'text-on-surface'}`}>
+                    {cat.label}
+                  </h3>
+                  {cat.subtitle && (
+                    <p className="text-[10px] font-bold tracking-widest text-outline uppercase mt-1">
+                      {cat.subtitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Background Decoration (Asymmetric Bleeds) */}
-      <div className="fixed -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10"></div>
-      <div className="fixed top-1/2 -left-32 w-80 h-80 bg-secondary/5 rounded-full blur-3xl -z-10"></div>
-    </>
+      {/* Sticky Bottom Action */}
+      <div className="fixed bottom-0 left-0 right-0 p-6 flex flex-col items-center justify-end pointer-events-none max-w-md mx-auto z-20">
+        {/* Gradient fade */}
+        <div className="absolute bottom-0 left-0 w-full h-[180px] bg-gradient-to-t from-surface via-surface/90 to-transparent -z-10 pointer-events-auto"></div>
+        
+        <div className="w-full pointer-events-auto pb-4">
+          <Link href="/location" className="w-full">
+            <Button className="w-full h-14 mb-4 shadow-xl">
+              Get Started
+            </Button>
+          </Link>
+          <p className="text-center text-[11px] font-medium text-on-surface-variant mb-6">
+            You can change these anytime in your profile settings.
+          </p>
+          
+          {/* Pagination dots */}
+          <div className="flex justify-center gap-2 items-center">
+            <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/40"></div>
+            <div className="w-6 h-1.5 rounded-full bg-[#8f2f00]"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/40"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
