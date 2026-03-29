@@ -1,6 +1,5 @@
 # DealDrop ⚡: Hyperlocal Flash Sale Platform
-
-[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge)](https://savara-hackathon-2026-4jhw.vercel.app/)
+(https://savara-hackathon-2026-4jhw.vercel.app/)
 
 Connecting local retailers with nearby customers through real-time, location-based flash deals.
 
