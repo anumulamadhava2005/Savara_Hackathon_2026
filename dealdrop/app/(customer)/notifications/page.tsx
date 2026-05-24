@@ -29,6 +29,19 @@ export default function NotificationsPage() {
     syncNotifications();
   }, [syncNotifications]);
 
+  // Load Leverage AI widget
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://studio.levrage.ai/embed.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, []);
+
   const unread = (notifications || []).filter(n => n.unread && !dismissed.includes(n.id));
   const read = (notifications || []).filter(n => (!n.unread || dismissed.includes(n.id)));
 
@@ -112,6 +125,32 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      {/* Leverage AI Widget */}
+      <div
+        id="nova-widget"
+        data-agent-id="7e268fb8-ebcf-4d03-bd14-c07c63fdcd7d"
+        data-user-id="f2c8c709-e30a-4dd2-a4cd-6cc94c2fb3e3"
+        data-embed-key="LEVRAGE_API_SECRET"
+        data-style="glass"
+        data-mode="voice"
+        data-theme="dark"
+        data-position="bottom-right"
+        data-primary="#a0836e"
+        data-secondary="#1f2937"
+        data-primary-light="#0ea5e9"
+        data-secondary-light="#f3f4f6"
+        data-radius="16"
+        data-blur="12"
+        data-opacity="0.6"
+        data-logo="https://cdn.vectorstock.com/i/500p/07/80/deal-drop-announcement-vector-62440780.jpg"
+        data-track-navigation="true"
+        data-track-forms="true"
+        data-track-selection="true"
+        data-track-scroll="true"
+        data-track-exit="true"
+        data-track-idle="true"
+      ></div>
     </div>
   );
 }
