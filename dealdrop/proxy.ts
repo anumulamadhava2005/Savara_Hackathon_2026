@@ -1,6 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Fetch with 4-second timeout so DNS failures fail fast in middleware
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -8,6 +15,7 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: fetchWithTimeout },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -23,13 +31,18 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session — CRITICAL: must not remove this
-  const { data: { user } } = await supabase.auth.getUser();
+  // Try to refresh session — if Supabase is unreachable, treat as logged out
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Supabase unreachable (DNS/network error) — fall through with user = null
+  }
 
   const { pathname } = request.nextUrl;
 
   // ── Strip route group prefixes if accidentally used as URLs ─────────────
-  // e.g. /(retailer)/dashboard → /dashboard, /(customer)/discover → /discover
   const routeGroupMatch = pathname.match(/^\/\([^)]+\)(\/.*)?$/);
   if (routeGroupMatch) {
     const url = request.nextUrl.clone();
@@ -37,25 +50,29 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ── "/" root: handled by app/page.tsx server-side, just pass through ─────
-  // app/page.tsx does its own DB check and redirect() call
+  // ── "/" root: pass through to app/page.tsx ───────────────────────────────
   if (pathname === '/') {
     return supabaseResponse;
   }
 
-  // ── /login and /register: pass through if unauthed, redirect to home if authed ─
+  // ── /login and /register: always allow through when Supabase is down ─────
   const authPages = ['/login', '/register'];
   if (authPages.some(p => pathname.startsWith(p))) {
     if (user) {
-      const { data: retailer } = await supabase.from('retailers').select('id').eq('user_id', user.id).single();
-      const url = request.nextUrl.clone();
-      url.pathname = retailer ? '/dashboard' : '/';
-      return NextResponse.redirect(url);
+      try {
+        const { data: retailer } = await supabase.from('retailers').select('id').eq('user_id', user.id).single();
+        const url = request.nextUrl.clone();
+        url.pathname = retailer ? '/dashboard' : '/';
+        return NextResponse.redirect(url);
+      } catch {
+        // DB unreachable — just let them through to login
+        return supabaseResponse;
+      }
     }
     return supabaseResponse;
   }
 
-  // ── /onboarding and /store-setup: require auth, but skip if profile exists ─
+  // ── /onboarding and /store-setup ─────────────────────────────────────────
   const setupPages = ['/onboarding', '/store-setup'];
   if (setupPages.some(p => pathname.startsWith(p))) {
     if (!user) {
@@ -63,19 +80,22 @@ export async function proxy(request: NextRequest) {
       url.pathname = '/login';
       return NextResponse.redirect(url);
     }
-    const { data: retailer } = await supabase.from('retailers').select('id').eq('user_id', user.id).single();
-    if (retailer) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/dashboard';
-      return NextResponse.redirect(url);
+    try {
+      const { data: retailer } = await supabase.from('retailers').select('id').eq('user_id', user.id).single();
+      if (retailer) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/dashboard';
+        return NextResponse.redirect(url);
+      }
+      const { data: profile } = await supabase.from('user_profiles').select('id').eq('id', user.id).single();
+      if (profile) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/discover';
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // DB unreachable — let them through
     }
-    const { data: profile } = await supabase.from('user_profiles').select('id').eq('id', user.id).single();
-    if (profile) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/discover';
-      return NextResponse.redirect(url);
-    }
-    // No profile yet — let them through to complete setup
     return supabaseResponse;
   }
 
@@ -87,29 +107,29 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Role-based route guards ───────────────────────────────────────────────
-  const { data: retailer } = await supabase.from('retailers').select('id').eq('user_id', user.id).single();
-  const isRetailer = !!retailer;
+  try {
+    const { data: retailer } = await supabase.from('retailers').select('id').eq('user_id', user.id).single();
+    const isRetailer = !!retailer;
 
-  // Retailer-only routes
-  const retailerPaths = ['/dashboard', '/create-deal', '/fulfillment'];
-  const isRetailerRoute = retailerPaths.some(p => pathname.startsWith(p));
+    const retailerPaths = ['/dashboard', '/create-deal', '/fulfillment'];
+    const isRetailerRoute = retailerPaths.some(p => pathname.startsWith(p));
 
-  // Customer trying to access retailer routes → send to customer home
-  if (isRetailerRoute && !isRetailer) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/discover';
-    return NextResponse.redirect(url);
-  }
+    if (isRetailerRoute && !isRetailer) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/discover';
+      return NextResponse.redirect(url);
+    }
 
-  // Customer-only routes
-  const customerPaths = ['/discover', '/map', '/passport', '/claim', '/deal', '/interests', '/location', '/welcome', '/deals', '/saved', '/wallet', '/flash', '/community', '/notifications'];
-  const isCustomerRoute = customerPaths.some(p => pathname.startsWith(p));
+    const customerPaths = ['/discover', '/map', '/passport', '/claim', '/deal', '/interests', '/location', '/welcome', '/deals', '/saved', '/wallet', '/flash', '/community', '/notifications'];
+    const isCustomerRoute = customerPaths.some(p => pathname.startsWith(p));
 
-  // Retailer trying to access customer routes → send to retailer dashboard
-  if (isCustomerRoute && isRetailer) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    if (isCustomerRoute && isRetailer) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+  } catch {
+    // DB unreachable — skip role guards, let request through
   }
 
   return supabaseResponse;

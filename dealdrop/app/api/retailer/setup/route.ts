@@ -7,14 +7,31 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { shop_name, description, address, category, lat, lng } = body;
+  const { shop_name, description, address, category, lat, lng, pin } = body;
+
+  if (!shop_name || !address || !category || lat === undefined || lng === undefined) {
+    return NextResponse.json(
+      { error: 'Missing required fields: shop_name, address, category, lat, lng' },
+      { status: 400 }
+    );
+  }
+
+  // Validate PIN (4 digits) if provided
+  if (pin && !/^\d{4}$/.test(String(pin))) {
+    return NextResponse.json({ error: 'PIN must be exactly 4 digits' }, { status: 400 });
+  }
+
+  // Embed PIN in description so /api/merchant/verify can read it without a migration
+  const storedDescription = pin
+    ? `${description ?? ''}|PIN:${pin}`
+    : (description ?? null);
 
   const { data: retailer, error } = await supabase
     .from('retailers')
     .insert({
       user_id: user.id,
       shop_name,
-      description,
+      description: storedDescription,
       address,
       category,
       location: `POINT(${lng} ${lat})`,
@@ -24,5 +41,14 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ retailer }, { status: 201 });
+
+  // Return PIN separately (strip from description in response)
+  const cleanRetailer = {
+    ...retailer,
+    description: description ?? null, // hide the internal |PIN: suffix from the client
+    pin_set: !!pin,
+  };
+
+  return NextResponse.json({ retailer: cleanRetailer }, { status: 201 });
 }
+

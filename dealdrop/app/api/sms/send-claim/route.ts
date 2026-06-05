@@ -77,12 +77,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Cast retailers relation to single object (FK join returns obj not array)
+    const retailer = deal.retailers as { shop_name: string; address: string } | null;
+
     // Mock SMS sending logic
     const smsContent = `
 DealDrop Alert: You've claimed ${deal.product_name}!
 ${deal.discount_percent}% off - Just $${deal.current_price}
-At: ${deal.retailers?.shop_name || 'Unknown'}
-${deal.retailers?.address || ''}
+At: ${retailer?.shop_name || 'Unknown'}
+${retailer?.address || ''}
 Expires: ${new Date(deal.expiry_time).toLocaleString()}
 Show this message at the register.
     `.trim();

@@ -90,9 +90,12 @@ export default function WalletPage() {
           
           <div className="flex justify-between items-start mb-10">
             <div>
-              <p className="font-black text-on-surface-variant text-[10px] uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#1d823b]" /> LIVE DISCOUNTS ASSETS
-              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="font-black text-on-surface-variant text-[10px] uppercase tracking-[0.2em]">
+                  LIVE DISCOUNTS ASSETS
+                </p>
+                <div className="w-2 h-2 rounded-full bg-[#1d823b]" />
+              </div>
               <h2 className="text-6xl font-headline font-black text-on-surface tracking-tighter leading-none">
                 ${displaySavings.toFixed(2)}
               </h2>

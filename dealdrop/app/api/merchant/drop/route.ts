@@ -1,157 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-interface MerchantDropRequest {
-  storeName: string;
-  pin: string;
-  item: string;
-  discount: string;
-  expiresInHours: number;
-}
+const AGENT_SECRET = process.env.LEVRAGE_API_SECRET;
 
-// POST /api/merchant/drop
-// Creates a new flash deal for a merchant after verifying credentials
+/**
+ * POST /api/merchant/drop
+ * Called by the Levrage voice agent (Merchant Partner flow).
+ *
+ * Flow: DropBot verifies store + PIN via /api/merchant/verify first,
+ * then calls this endpoint with the deal details.
+ *
+ * Body: { storeName, pin, item, discount, expiresInHours }
+ * Auth: Bearer LEVRAGE_API_SECRET
+ */
 export async function POST(req: NextRequest) {
-  try {
-    // Verify Bearer token
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Missing or invalid Authorization header' },
-        { status: 401 }
-      );
-    }
+  const authHeader = req.headers.get('authorization') || '';
+  const token = authHeader.replace('Bearer ', '');
+  if (!AGENT_SECRET || token !== AGENT_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-    const token = authHeader.slice(7);
-    if (token !== process.env.LEVRAGE_API_SECRET) {
-      return NextResponse.json(
-        { error: 'Invalid API secret' },
-        { status: 403 }
-      );
-    }
+  const body = await req.json().catch(() => ({}));
+  const { storeName, pin, item, discount, expiresInHours } = body as Record<string, string | number>;
 
-    // Parse request body
-    const body = await req.json() as MerchantDropRequest;
-    const { storeName, pin, item, discount, expiresInHours } = body;
-
-    // Validate required fields
-    if (!storeName || !pin || !item || !discount || expiresInHours === undefined) {
-      return NextResponse.json(
-        { error: 'Missing required fields: storeName, pin, item, discount, expiresInHours' },
-        { status: 400 }
-      );
-    }
-
-    if (expiresInHours <= 0) {
-      return NextResponse.json(
-        { error: 'expiresInHours must be greater than 0' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = await createClient();
-
-    // Verify merchant credentials
-    // Note: Current schema doesn't have a PIN column in retailers table.
-    // To implement PIN verification, you can:
-    // 1. Add a 'pin' column to the retailers table (hashed/encrypted)
-    // 2. Create a separate merchants table with PIN authentication
-    // 3. Use another authentication method (API key, etc.)
-    //
-    // For now, we'll query the retailer and implement PIN verification logic.
-    const { data: retailer, error: retailerError } = await supabase
-      .from('retailers')
-      .select('id, shop_name')
-      .ilike('shop_name', storeName)
-      .single();
-
-    if (retailerError || !retailer) {
-      console.error('[/api/merchant/drop] Retailer lookup error:', retailerError);
-      return NextResponse.json(
-        { error: 'Retailer not found or authentication failed' },
-        { status: 404 }
-      );
-    }
-
-    // TODO: Verify PIN against stored PIN in database
-    // Example: const isPinValid = await verifyPin(retailer.id, pin);
-    // For demonstration, we'll accept the PIN as-is. In production, compare with hashed PIN.
-    if (!pin || pin.length === 0) {
-      return NextResponse.json(
-        { error: 'Invalid PIN' },
-        { status: 401 }
-      );
-    }
-
-    // Parse discount (expecting format like "50%" or just "50")
-    let discountPercent = parseFloat(discount);
-    if (isNaN(discountPercent) || discountPercent <= 0 || discountPercent >= 100) {
-      return NextResponse.json(
-        { error: 'discount must be a valid number between 0 and 100' },
-        { status: 400 }
-      );
-    }
-
-    // Set deal expiry time
-    const expiryTime = new Date();
-    expiryTime.setHours(expiryTime.getHours() + expiresInHours);
-
-    // For this demo, set reasonable default values for the deal
-    const originalPrice = 100; // Default assumed original price
-    const currentPrice = originalPrice * (1 - discountPercent / 100);
-
-    // Insert new deal
-    const { data: newDeal, error: insertError } = await supabase
-      .from('deals')
-      .insert({
-        retailer_id: retailer.id,
-        product_name: item,
-        description: `Flash deal on ${item}`,
-        category: 'flash-deal', // Default category
-        original_price: originalPrice,
-        current_price: currentPrice,
-        discount_percent: discountPercent,
-        quantity_total: 50, // Default quantity
-        quantity_remaining: 50,
-        expiry_time: expiryTime.toISOString(),
-        location: null, // Will use retailer's location if available
-        status: 'active',
-        is_flash_mob: true,
-        flash_mob_target: 10,
-        flash_mob_discount: discountPercent + 10, // Additional discount at target
-      })
-      .select('id, product_name, discount_percent, expiry_time');
-
-    if (insertError) {
-      console.error('[/api/merchant/drop] Insert error:', insertError);
-      return NextResponse.json(
-        { error: 'Failed to create deal' },
-        { status: 500 }
-      );
-    }
-
-    if (!newDeal || newDeal.length === 0) {
-      return NextResponse.json(
-        { error: 'Deal creation failed' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Deal created successfully for ${storeName}`,
-      deal: {
-        id: newDeal[0].id,
-        product_name: newDeal[0].product_name,
-        discount_percent: newDeal[0].discount_percent,
-        expiry_time: newDeal[0].expiry_time,
-      },
-    });
-  } catch (error) {
-    console.error('[/api/merchant/drop] Error:', error);
+  if (!storeName || !pin || !item || !discount) {
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Missing required fields: storeName, pin, item, discount' },
+      { status: 400 }
     );
   }
+
+  const supabase = await createClient();
+
+  // ── 1. Look up retailer ───────────────────────────────────────────────────
+  const { data: retailer, error: retailerError } = await supabase
+    .from('retailers')
+    .select('id, shop_name, description, location')
+    .ilike('shop_name', `%${storeName}%`)
+    .single();
+
+  if (retailerError || !retailer) {
+    return NextResponse.json(
+      { error: `Store "${storeName}" not found. Is the store name correct?` },
+      { status: 404 }
+    );
+  }
+
+  // ── 2. Verify PIN (same logic as /api/merchant/verify) ────────────────────
+  const pinMatch = (retailer.description ?? '').match(/\|PIN:(\d{4})/);
+  const storedPin = pinMatch ? pinMatch[1] : retailer.id.replace(/-/g, '').slice(-4);
+
+  if (String(pin).trim() !== storedPin) {
+    return NextResponse.json(
+      { error: 'Incorrect PIN. Deal not created. Please call back with the correct PIN.' },
+      { status: 403 }
+    );
+  }
+
+  // ── 3. Parse discount ─────────────────────────────────────────────────────
+  const discountNum = parseInt(String(discount).replace(/[^0-9]/g, ''), 10);
+  if (isNaN(discountNum) || discountNum < 1 || discountNum > 100) {
+    return NextResponse.json(
+      { error: 'Invalid discount. Provide a percentage between 1 and 100.' },
+      { status: 400 }
+    );
+  }
+
+  // ── 4. Parse expiry ───────────────────────────────────────────────────────
+  const hoursNum = Number(expiresInHours) || 2;
+  const expiryTime = new Date(Date.now() + hoursNum * 3600000).toISOString();
+
+  // ── 5. Create the deal ────────────────────────────────────────────────────
+  const originalPrice = 100;
+  const currentPrice = Math.round(originalPrice * (1 - discountNum / 100));
+
+  const { data: deal, error: dealError } = await supabase
+    .from('deals')
+    .insert({
+      retailer_id: retailer.id,
+      product_name: String(item),
+      description: `Flash drop via DropBot: ${discountNum}% off ${item}`,
+      category: 'General',
+      original_price: originalPrice,
+      current_price: currentPrice,
+      discount_percent: discountNum,
+      quantity_total: 50,
+      quantity_remaining: 50,
+      expiry_time: expiryTime,
+      location: retailer.location,
+      status: 'active',
+      is_flash_mob: true,
+      flash_mob_target: 10,
+      flash_mob_discount: Math.min(discountNum + 10, 100),
+    })
+    .select('id, product_name, discount_percent, expiry_time, quantity_remaining')
+    .single();
+
+  if (dealError || !deal) {
+    return NextResponse.json({ error: 'Failed to create deal: ' + dealError?.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    deal_id: deal.id,
+    message: `Flash drop is LIVE! "${item}" at ${retailer.shop_name} — ${discountNum}% off for ${hoursNum}h. 50 slots available.`,
+    deal: {
+      id: deal.id,
+      product_name: deal.product_name,
+      discount_percent: deal.discount_percent,
+      expiry_time: deal.expiry_time,
+      quantity_remaining: deal.quantity_remaining,
+    },
+  });
 }

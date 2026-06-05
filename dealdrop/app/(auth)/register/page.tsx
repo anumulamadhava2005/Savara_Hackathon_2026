@@ -24,14 +24,17 @@ export default function RegisterPage() {
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
     setErrorMsg('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?type=${accountType}`,
-      },
-    });
-    if (error) {
-      setErrorMsg(error.message);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback?type=${accountType}`,
+        },
+      });
+      if (error) setErrorMsg(error.message);
+    } catch {
+      setErrorMsg('Cannot connect to server. Please check your internet connection and try again.');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -40,24 +43,27 @@ export default function RegisterPage() {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, role: accountType },
-        emailRedirectTo: `${window.location.origin}/api/auth/callback?type=${accountType}`,
-      },
-    });
-
-    if (error) {
-      setErrorMsg(error.message);
-    } else if (data.user && !data.session) {
-      setSuccessMsg(`Check your inbox! We sent a confirmation link to ${email}`);
-    } else if (data.session) {
-      window.location.href = `/api/auth/callback?type=${accountType}`;
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName, role: accountType },
+          emailRedirectTo: `${window.location.origin}/api/auth/callback?type=${accountType}`,
+        },
+      });
+      if (error) {
+        setErrorMsg(error.message);
+      } else if (data.user && !data.session) {
+        setSuccessMsg(`Check your inbox! We sent a confirmation link to ${email}`);
+      } else if (data.session) {
+        window.location.href = `/api/auth/callback?type=${accountType}`;
+      }
+    } catch {
+      setErrorMsg('Cannot connect to server. Please check your internet connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

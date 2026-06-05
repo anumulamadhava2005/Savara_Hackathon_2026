@@ -12,6 +12,7 @@ export default function StoreSetupPage() {
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
+  const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -47,7 +48,8 @@ export default function StoreSetupPage() {
           address: "742 North Michigan Ave, Chicago, IL 60611", // Defaulted mock
           category: selectedTags[0] || 'general',
           lat: 41.8962,
-          lng: -87.6242
+          lng: -87.6242,
+          pin: pin || undefined,
         })
       });
 
@@ -109,6 +111,22 @@ export default function StoreSetupPage() {
                <div>
                   <label className="block text-sm font-bold text-gray-600 mb-2">Public Description</label>
                   <textarea value={description} onChange={(e) => setDescription(e.target.value)} required placeholder="Describe your store's vibe and what makes you unique..." rows={4} className="w-full bg-gray-100 border-none rounded-xl px-4 py-3.5 text-gray-900 font-medium focus:ring-2 focus:ring-[#a33700]/20 outline-none transition-all resize-none"></textarea>
+               </div>
+               {/* DropBot PIN — used for voice agent verification */}
+               <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-1">DropBot Voice PIN <span className="text-[#a33700]">*</span></label>
+                  <p className="text-xs text-gray-400 mb-2">4-digit PIN used when calling DropBot to publish flash deals by voice.</p>
+                  <input
+                    type="text"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="e.g., 4821"
+                    maxLength={4}
+                    pattern="\d{4}"
+                    inputMode="numeric"
+                    required
+                    className="w-full bg-gray-100 border-none rounded-xl px-4 py-3.5 text-gray-900 font-medium tracking-[0.5em] text-center focus:ring-2 focus:ring-[#a33700]/20 outline-none transition-all"
+                  />
                </div>
              </div>
            </div>

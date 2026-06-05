@@ -1,6 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
 
+// Fetch wrapper that adds a 5-second timeout so DNS failures fail fast
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timeout)
+  );
+}
+
 export async function createClient() {
   const cookieStore = await cookies();
   const reqHeaders = await headers();
@@ -11,6 +20,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: {
+        fetch: fetchWithTimeout,
         headers: {
           // Pass Authorization specifically so API routes can natively accept Bearer tokens
           Authorization: authHeader || '',
@@ -29,3 +39,4 @@ export async function createClient() {
     }
   );
 }
+

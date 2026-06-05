@@ -23,23 +23,34 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setErrorMsg('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/api/auth/callback` },
-    });
-    if (error) { setErrorMsg(error.message); setIsLoading(false); }
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/api/auth/callback` },
+      });
+      if (error) setErrorMsg(error.message);
+    } catch {
+      setErrorMsg('Cannot connect to server. Please check your internet connection.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setErrorMsg(error.message);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setErrorMsg(error.message);
+      } else {
+        window.location.href = '/api/auth/callback';
+      }
+    } catch {
+      setErrorMsg('Cannot connect to server. Please check your internet connection.');
+    } finally {
       setIsLoading(false);
-    } else {
-      window.location.href = '/api/auth/callback';
     }
   };
 
