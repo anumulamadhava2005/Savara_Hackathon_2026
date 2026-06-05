@@ -77,8 +77,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Cast retailers relation to single object (FK join returns obj not array)
-    const retailer = deal.retailers as { shop_name: string; address: string } | null;
+    // Cast retailers relation to single object
+    const retailer = (Array.isArray(deal.retailers) ? deal.retailers[0] : deal.retailers) as unknown as { shop_name: string; address: string } | null;
 
     // Mock SMS sending logic
     const smsContent = `
