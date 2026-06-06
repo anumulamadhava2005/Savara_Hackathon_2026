@@ -15,6 +15,11 @@ export async function createClient() {
   const reqHeaders = await headers();
   const authHeader = reqHeaders.get('Authorization') || reqHeaders.get('authorization');
   
+  let finalAuthHeader = authHeader || '';
+  if (finalAuthHeader.includes(process.env.LEVRAGE_API_SECRET || 'lev_')) {
+    finalAuthHeader = '';
+  }
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,7 +28,7 @@ export async function createClient() {
         fetch: fetchWithTimeout,
         headers: {
           // Pass Authorization specifically so API routes can natively accept Bearer tokens
-          Authorization: authHeader || '',
+          ...(finalAuthHeader ? { Authorization: finalAuthHeader } : {}),
         },
       },
       cookies: {

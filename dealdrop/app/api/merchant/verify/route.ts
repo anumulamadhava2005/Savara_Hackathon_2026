@@ -21,10 +21,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { storeName, pin } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({}));
+  const storeName = body.storeName || body.store_name;
+  const pin = body.pin;
 
   if (!storeName || !pin) {
-    return NextResponse.json({ error: 'Missing storeName or pin' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing store_name or pin' }, { status: 400 });
   }
 
   const supabase = await createClient();

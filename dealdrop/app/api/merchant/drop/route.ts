@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { storeName, pin, item, discount, expiresInHours } = body as Record<string, string | number>;
+  const storeName = body.storeName || body.store_name;
+  const { pin, item, discount, expiresInHours } = body as Record<string, string | number>;
 
   if (!storeName || !pin || !item || !discount) {
     return NextResponse.json(
