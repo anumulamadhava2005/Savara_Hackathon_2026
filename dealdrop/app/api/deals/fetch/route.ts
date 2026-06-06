@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         .in('id', ids)
         .eq('status', 'active')
         .gt('quantity_remaining', 0);
-      deals = (data as typeof deals) ?? [];
+      deals = (data as unknown as typeof deals) ?? [];
     }
   }
 
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       .gt('expiry_time', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(10);
-    deals = (data as typeof deals) ?? [];
+    deals = (data as unknown as typeof deals) ?? [];
     if (coords) locationUsed = `${locationQuery} (none in radius — showing all)`;
   }
 

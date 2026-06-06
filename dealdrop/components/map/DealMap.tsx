@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { Deal, GeoPoint } from '@/types';
 import dynamic from 'next/dynamic';
+import 'leaflet/dist/leaflet.css';
 
 // Leaflet must be loaded client-side only
 const MapContainerComponent = dynamic(
@@ -31,9 +32,7 @@ export function DealMap({ deals, center, zoom = 14 }: DealMapProps) {
   const mapRef = useRef(null);
 
   useEffect(() => {
-    // Import leaflet CSS
-    import('leaflet/dist/leaflet.css');
-    
+    // Map instance cleanup on unmount
     return () => {
       // Cleanup leaflet map instance on unmount to support React StrictMode
       // @ts-expect-error - _leaflet_id is internal
